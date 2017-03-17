@@ -1,0 +1,4 @@
+.. _settings:
+
+settings.cfg
+============
