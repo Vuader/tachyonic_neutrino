@@ -25,15 +25,6 @@ class ValidationError(Error):
         return str(self.description)
 
 
-class RestClientError(Error):
-    def __init__(self, description):
-        Exception.__init__(self, description)
-        self.description = description
-
-    def __str__(self):
-        return str(self.description)
-
-
 class FieldError(ValidationError):
     def __init__(self, field, label, description, value):
         self.error = "%s %s %s" % (field, description, value)
