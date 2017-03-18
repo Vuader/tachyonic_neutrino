@@ -17,7 +17,7 @@ from wsgiref import simple_server
 
 from pkg_resources import resource_stream, resource_listdir, resource_isdir, resource_exists
 
-from tachyonic.neutrino.wsgi import app
+from tachyonic.neutrino import app
 from tachyonic.neutrino.utils.general import import_module
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino import metadata
