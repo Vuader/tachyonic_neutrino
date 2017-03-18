@@ -17,7 +17,9 @@ from wsgiref import simple_server
 
 from pkg_resources import resource_stream, resource_listdir, resource_isdir, resource_exists
 
-import tachyonic.neutrino
+from tachyonic.neutrino.wsgi import app
+from tachyonic.neutrino.utils.general import import_module
+from tachyonic.neutrino.config import Config
 from tachyonic.neutrino import metadata
 
 log = logging.getLogger(__name__)
@@ -41,7 +43,7 @@ def _copy_resource(path, src, dst=''):
 
 def _copy_file(module, path, src, dst, update=True):
     try:
-        tachyonic.neutrino.utils.import_module(module)
+        import_module(module)
     except ImportError:
         print("Neutrino python package not found %s" % module)
         exit()
@@ -94,7 +96,7 @@ def static(args):
                 _copy_file(module, local, fullname, fullname)
 
     if os.path.exists('%s/settings.cfg' % path):
-        config = tachyonic.neutrino.Config('%s/settings.cfg' % path)
+        config = Config('%s/settings.cfg' % path)
         app_config = config.get('application')
         modules = app_config.getitems('modules')
         for module in modules:
@@ -126,9 +128,7 @@ def server(args):
     os.chdir(app_root)
     sys.path.append(app_root)
     site.addsitedir(app_root)
-    tachyonic.neutrino_wsgi = tachyon.Wsgi(app_root)
-
-    httpd = simple_server.make_server(ip, port, tachyonic.neutrino_wsgi.application())
+    httpd = simple_server.make_server(ip, port, app(app_root))
     print('Running...\n')
     httpd.serve_forever()
 
@@ -162,7 +162,7 @@ def session(args):
     path = args.path
     c = 0
     if os.path.exists("%s/settings.cfg" % (path,)):
-        config = tachyonic.neutrino.Config("%s/settings.cfg" % (path,))
+        config = Config("%s/settings.cfg" % (path,))
         app_config = config.get('application', {})
         session_expire = app_config.get('session_expire', 3600)
         r = re.compile('^.*session$')
