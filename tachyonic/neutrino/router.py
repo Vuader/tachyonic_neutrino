@@ -29,6 +29,9 @@ class Router(object):
 
         self.routes = []
 
+    def view(self, uri, method, req, resp):
+        view(uri, method, req, resp)
+
     def _match(self, method, request_uri):
         if "?" in request_uri:
             uri, args = request_uri.split('?')
