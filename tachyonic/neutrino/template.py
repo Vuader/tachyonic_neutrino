@@ -38,6 +38,9 @@ class Jinja(object):
         self._loader = JinjaLoader()
         self._jinja = Environment(loader=self._loader)
 
+    def clean_up(self):
+        self._request.clear()
+
     def get_template(self, *args, **kwargs):
         t = self._jinja.get_template(*args, **kwargs)
         w = GetTemplateWrapper(t, self._request)

@@ -12,7 +12,7 @@ import signal
 
 from jinja2.exceptions import TemplateNotFound
 
-import tachyonic
+import tachyonic as root
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino import restart
@@ -35,9 +35,9 @@ from tachyonic.neutrino.policy import Policy
 
 log = logging.getLogger(__name__)
 
-tachyonic.router = Router()
-tachyonic.jinja = template.Jinja()
-tachyonic.render_template = tachyonic.jinja.render_template
+root.router = Router()
+root.jinja = template.Jinja()
+root.render_template = root.jinja.render_template
 
 
 class Wsgi(object):
@@ -45,7 +45,7 @@ class Wsgi(object):
         try:
             os.chdir(app_root)
             sys.path.append(app_root)
-            self.router = tachyonic.router
+            self.router = root.router
             self.app_root = app_root.rstrip('/')
             config = "%s/settings.cfg" % (self.app_root,)
             policy = "%s/policy.json" % (self.app_root,)
@@ -68,7 +68,7 @@ class Wsgi(object):
 
             self.modules = self._modules()
 
-            tachyonic.jinja.load_templates(self.config, app_root)
+            root.jinja.load_templates(self.config, app_root)
             middleware = self.app_config.getitems('middleware')
             self.middleware = self._m_objs(self.modules, middleware)
 
@@ -84,22 +84,26 @@ class Wsgi(object):
             trace = str(traceback.format_exc())
             log.error("%s\n%s" % (e, trace))
             log.error("RESTARTING (pid=%d)" % os.getpid())
+            try:
+                self._cleanup()
+            except:
+                pass
             os.kill(os.getpid(), signal.SIGINT)
             return self._error_app
 
     def _error_template(self, req, code):
         for module in self.modules:
             try:
-                t = tachyonic.jinja.get_template("%s.html" % (code))
+                t = root.jinja.get_template("%s.html" % (code))
                 return t
             except TemplateNotFound:
                 pass
             try:
                 if req.is_ajax():
-                    t = tachyonic.jinja.get_template("%s/%s_ajax.html" % (module, code))
+                    t = root.jinja.get_template("%s/%s_ajax.html" % (module, code))
                     return t
                 else:
-                    t = tachyonic.jinja.get_template("%s/%s.html" % (module, code))
+                    t = root.jinja.get_template("%s/%s.html" % (module, code))
                     return t
 
             except TemplateNotFound:
@@ -167,6 +171,7 @@ class Wsgi(object):
         return resp
 
     def _cleanup(self):
+        root.jinja.clean_up()
         RestClient().close_all()
         Mysql.close_all()
         self.logger.stdout.flush()
@@ -194,7 +199,7 @@ class Wsgi(object):
             debug = self.log_config.getboolean('debug')
 
             if 'redis' in self.config:
-                redis = tachyonic.neutrino.redis(self.config)
+                redis = root.neutrino.redis(self.config)
                 session = SessionRedis(self.config, redis=redis)
             else:
                 session = SessionFile(self.config, app_root=self.app_root)
@@ -202,14 +207,14 @@ class Wsgi(object):
 
             mysql_config = self.config.get('mysql')
             if mysql_config.get('database') is not None:
-                Mysql(**mysql_config.data)
+                Mysql(**mysql_config.dict())
 
-            req = Request(environ, self.config, session, tachyonic.router, self.logger, self)
+            req = Request(environ, self.config, session, root.router, self.logger, self)
             resp = Response(req)
 
             resp.headers['Set-Cookie'] = session_cookie
 
-            r = tachyonic.router.route(req)
+            r = root.router.route(req)
 
             if debug is True:
                 log.debug("Request URI: %s" % (req.get_full_path()))
@@ -217,14 +222,14 @@ class Wsgi(object):
 
             response_headers = []
 
-            tachyonic.jinja.globals['SITE'] = req.environ['SCRIPT_NAME']
-            tachyonic.jinja.request['REQUEST'] = req
-            if tachyonic.jinja.globals['SITE'] == '/':
-                tachyonic.jinja.globals['SITE'] = ''
-            tachyonic.jinja.globals['STATIC'] = self.app_config.get('static',
+            root.jinja.globals['SITE'] = req.environ['SCRIPT_NAME']
+            root.jinja.request['REQUEST'] = req
+            if root.jinja.globals['SITE'] == '/':
+                root.jinja.globals['SITE'] = ''
+            root.jinja.globals['STATIC'] = self.app_config.get('static',
                                                               '').rstrip('/')
-            if tachyonic.jinja.globals['STATIC'] == '/':
-                tachyonic.jinja.globals['STATIC'] = ''
+            if root.jinja.globals['STATIC'] == '/':
+                root.jinja.globals['STATIC'] = ''
 
             returned = None
             try:
@@ -304,6 +309,10 @@ class Wsgi(object):
             trace = str(traceback.format_exc())
             log.error("%s\n%s" % (e, trace))
             log.error("RESTARTING (pid=%d)" % os.getpid())
+            try:
+                self._cleanup()
+            except:
+                pass
             os.kill(os.getpid(), signal.SIGINT)
 
     def _modules(self):
@@ -329,7 +338,7 @@ class Wsgi(object):
                 if hasattr(mod, cls):
                     cls = getattr(mod, cls)
                     try:
-                        loaded.append(cls(self))
+                        loaded.append(cls())
                     except Exception as e:
                         trace = str(traceback.format_exc())
                         log.error("%s\n%s" % (str(e), trace))
@@ -341,16 +350,16 @@ class Wsgi(object):
 
     def resources(self):
         def resource_wrapper(f):
-            f(self)
+            f()
 
         return resource_wrapper
 
     def resource(self, method, resource, policy=None):
         def resource_wrapper(f):
-            return tachyonic.router.add(method, resource, f, policy)
+            return root.router.add(method, resource, f, policy)
 
         return resource_wrapper
 
 
 app = Wsgi()
-tachyonic.app = app
+root.app = app
