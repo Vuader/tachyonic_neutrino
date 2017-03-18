@@ -25,7 +25,7 @@ from tachyonic.neutrino.headers import Headers
 from tachyonic.neutrino.request import Request
 from tachyonic.neutrino.response import Response
 from tachyonic.neutrino.mysql import Mysql
-from tachyonic.neutrino.restclient import RestClient
+from tachyonic.client.restclient import RestClient
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino.web.dom import Dom
