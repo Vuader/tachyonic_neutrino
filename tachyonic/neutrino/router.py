@@ -33,6 +33,7 @@ class Router(object):
         view(uri, method, req, resp)
 
     def _match(self, method, request_uri):
+        # Standard routing below
         if "?" in request_uri:
             uri, args = request_uri.split('?')
             uri = uri.strip('/').split('/')
@@ -41,8 +42,12 @@ class Router(object):
 
         for r in self.routes:
             r_method, r_uri, r_obj, r_name = r
+
+            w_uri = str(r_uri)
             r_uri = r_uri.split('/')
             if method == r_method:
+                if '*' in r_uri and w_uri.replace('/*','') in request_uri:
+                    return [r, {}]
                 if len(uri) == len(r_uri):
                     kwargs = {}
                     for (i, v) in enumerate(r_uri):
