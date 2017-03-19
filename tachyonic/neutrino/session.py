@@ -18,7 +18,7 @@ except ImportError:
 
 import threading
 
-from tachyonic.neutrino.headers import Headers 
+from tachyonic.neutrino.headers import Headers
 from tachyonic.neutrino.utils.general import if_unicode_to_utf8
 from tachyonic.neutrino.utils.general import random_id
 
@@ -44,8 +44,6 @@ class SessionBase(object):
     def _get_host(self, environ):
         if self.use_x_forwarded_host is True and 'X_FORWARDED_HOST' in self.headers:
             return self.headers['X_FORWARDED_HOST']
-        elif 'HOST' in self.headers:
-            return self.headers['HOST']
         elif 'SERVER_NAME' in self.environ:
             return self.environ['SERVER_NAME']
         elif 'SERVER_ADDR' in self.environ:

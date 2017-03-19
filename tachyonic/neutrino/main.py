@@ -122,8 +122,7 @@ def setup(args):
     _copy_file(module, path, 'resources/settings.cfg', 'settings.cfg', False)
     _copy_file(module, path, 'resources/policy.json', 'policy.json', False)
     _create_dir(path, '/wsgi')
-    _copy_resource(path, '/wsgi/__init__.py')
-    _copy_resource(path, '/wsgi/app.py')
+    _copy_resource(path, '/wsgi/app.wsgi')
     _create_dir(path, '/templates')
     static(args)
     _create_dir(path, '/tmp')
@@ -181,7 +180,6 @@ def server(args):
 
         try:
             if "css" in sext:
-                print("boom")
                 resp.headers['Content-Type'] = const.TEXT_CSS
             elif "txt" in sext:
                 resp.headers['Content-Type'] = const.TEXT_PLAIN
@@ -227,8 +225,7 @@ def create(args):
     if os.path.exists(path):
         _copy_resource(path, '/settings.cfg')
         _create_dir(path, '/wsgi')
-        _copy_resource(path, '/wsgi/__init__.py')
-        _copy_resource(path, '/wsgi/app.py')
+        _copy_resource(path, '/wsgi/app.wsgi')
         _create_dir(path, '/templates')
         _create_dir(path, '/static')
         _create_dir(path, '/myproject')

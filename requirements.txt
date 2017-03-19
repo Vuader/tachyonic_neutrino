@@ -5,3 +5,4 @@ passlib==1.7.1
 Jinja2==2.9.5
 redis==2.10.5
 phonenumbers==8.3.2
+gunicorn==19.7.0
