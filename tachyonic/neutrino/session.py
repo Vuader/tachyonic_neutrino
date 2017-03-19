@@ -18,7 +18,7 @@ except ImportError:
 
 import threading
 
-from tachyonic.neutrino.headers import Headers 
+from tachyonic.neutrino.headers import Headers
 from tachyonic.neutrino.utils.general import if_unicode_to_utf8
 from tachyonic.neutrino.utils.general import random_id
 
