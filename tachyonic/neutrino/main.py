@@ -126,7 +126,7 @@ def server(args):
     os.chdir(app_root)
     sys.path.append(app_root)
     site.addsitedir(app_root)
-    tachyonic.neutrino_wsgi = tachyon.Wsgi(app_root)
+    tachyonic.neutrino_wsgi = tachyonic.Wsgi(app_root)
 
     httpd = simple_server.make_server(ip, port, tachyonic.neutrino_wsgi.application())
     print('Running...\n')
