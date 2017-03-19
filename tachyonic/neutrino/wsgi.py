@@ -253,7 +253,7 @@ class Wsgi(object):
                         m.pre(req, resp)
 
                 if r is not None:
-                    if policy.validate(req.view):
+                    if req.view is None or policy.validate(req.view):
                         returned = if_unicode_to_utf8(obj(req, resp, **obj_kwargs))
                     else:
                         raise exceptions.HTTPForbidden('Access Forbidden',
