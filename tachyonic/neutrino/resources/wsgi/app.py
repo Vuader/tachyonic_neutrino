@@ -11,8 +11,8 @@ virtualenv = None
 if virtualenv is not None:
     virtualenv = virtualenv.rstrip('/')
     # Add the site-packages of the chosen virtualenv to work with
-    #site.addsitedir("%s/lib/python2.7/site-packages" % (virtualenv,))
-	# Activate your virtualenv
+    # site.addsitedir("%s/lib/python2.7/site-packages" % (virtualenv,))
+    # Activate your virtualenv
     activate_env="%s/bin/activate_this.py" % (virtualenv,)
     execfile(activate_env, dict(__file__=activate_env))
 

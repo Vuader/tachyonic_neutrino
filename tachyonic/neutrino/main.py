@@ -17,9 +17,7 @@ from wsgiref import simple_server
 
 from pkg_resources import resource_stream, resource_listdir, resource_isdir, resource_exists
 
-from tachyonic.neutrino import app
-from tachyonic.neutrino.utils.general import import_module
-from tachyonic.neutrino.config import Config
+import tachyonic.neutrino
 from tachyonic.neutrino import metadata
 
 log = logging.getLogger(__name__)
@@ -43,7 +41,7 @@ def _copy_resource(path, src, dst=''):
 
 def _copy_file(module, path, src, dst, update=True):
     try:
-        import_module(module)
+        tachyonic.neutrino.utils.import_module(module)
     except ImportError:
         print("Neutrino python package not found %s" % module)
         exit()
@@ -96,7 +94,7 @@ def static(args):
                 _copy_file(module, local, fullname, fullname)
 
     if os.path.exists('%s/settings.cfg' % path):
-        config = Config('%s/settings.cfg' % path)
+        config = tachyonic.neutrino.Config('%s/settings.cfg' % path)
         app_config = config.get('application')
         modules = app_config.getitems('modules')
         for module in modules:
@@ -111,8 +109,7 @@ def setup(args):
     _copy_file(module, path, 'resources/settings.cfg', 'settings.cfg', False)
     _copy_file(module, path, 'resources/policy.json', 'policy.json', False)
     _create_dir(path, '/wsgi')
-    _copy_resource(path, '/wsgi/__init__.py')
-    _copy_resource(path, '/wsgi/app.py')
+    _copy_resource(path, '/wsgi/app.wsgi')
     _create_dir(path, '/templates')
     static(args)
     _create_dir(path, '/tmp')
@@ -128,8 +125,9 @@ def server(args):
     app_root = path
     os.chdir(app_root)
     sys.path.append(app_root)
-    site.addsitedir(app_root)<<<<<<< master
+    site.addsitedir(app_root)
     tachyonic.neutrino_wsgi = tachyonic.Wsgi(app_root)
+
     httpd = simple_server.make_server(ip, port, tachyonic.neutrino_wsgi.application())
     print('Running...\n')
     httpd.serve_forever()
@@ -140,8 +138,7 @@ def create(args):
     if os.path.exists(path):
         _copy_resource(path, '/settings.cfg')
         _create_dir(path, '/wsgi')
-        _copy_resource(path, '/wsgi/__init__.py')
-        _copy_resource(path, '/wsgi/app.py')
+        _copy_resource(path, '/wsgi/app.wsgi')
         _create_dir(path, '/templates')
         _create_dir(path, '/static')
         _create_dir(path, '/myproject')
@@ -165,7 +162,7 @@ def session(args):
     path = args.path
     c = 0
     if os.path.exists("%s/settings.cfg" % (path,)):
-        config = Config("%s/settings.cfg" % (path,))
+        config = tachyonic.neutrino.Config("%s/settings.cfg" % (path,))
         app_config = config.get('application', {})
         session_expire = app_config.get('session_expire', 3600)
         r = re.compile('^.*session$')
