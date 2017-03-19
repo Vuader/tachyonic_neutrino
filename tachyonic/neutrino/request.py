@@ -115,8 +115,6 @@ class Request(object):
         use_x_forwarded_host = app_config.get('use_x_forwarded_host', False)
         if use_x_forwarded_host is True and 'X_FORWARDED_HOST' in self.headers:
             return self.headers['X_FORWARDED_HOST']
-        elif 'HOST' in self.headers:
-            return self.headers['HOST']
         elif 'SERVER_NAME' in self.environ:
             return self.environ['SERVER_NAME']
         elif 'SERVER_ADDR' in self.environ:
@@ -164,10 +162,11 @@ class Request(object):
 
         if self.get_proto() == 'https':
             if self.get_port() != '443':
-                url += ':' + self.get_port
+                url += ':' + self.get_port()
         elif self.get_proto() == 'http':
             if self.get_port() != '80':
-                url += ':' + self.get_port
+                url += ':' + self.get_port()
+                pass
 
         url += quote(self.get_script())
         return url
@@ -178,10 +177,10 @@ class Request(object):
 
         if self.get_proto() == 'https':
             if self.get_port() != '443':
-                url += ':' + self.get_port
+                url += ':' + self.get_port()
         elif self.get_proto() == 'http':
             if self.get_port() != '80':
-                url += ':' + self.get_port
+                url += ':' + self.get_port()
 
         url += quote(self.get_script())
         if 'PATH_INFO' in self.environ:
