@@ -25,7 +25,7 @@ from tachyonic.neutrino.headers import Headers
 from tachyonic.neutrino.request import Request
 from tachyonic.neutrino.response import Response
 from tachyonic.neutrino.mysql import Mysql
-from tachyonic.neutrino.restclient import RestClient
+from tachyonic.client.restclient import RestClient
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino.web.dom import Dom
@@ -41,8 +41,12 @@ root.render_template = root.jinja.render_template
 
 
 class Wsgi(object):
+    def __init__(self):
+        self.running = False
+
     def __call__(self, app_root):
         try:
+            self.running = True
             os.chdir(app_root)
             sys.path.append(app_root)
             self.router = root.router
@@ -350,13 +354,15 @@ class Wsgi(object):
 
     def resources(self):
         def resource_wrapper(f):
-            f()
+            if self.running is True:
+                f()
 
         return resource_wrapper
 
     def resource(self, method, resource, policy=None):
         def resource_wrapper(f):
-            return root.router.add(method, resource, f, policy)
+            if self.running is True:
+                return root.router.add(method, resource, f, policy)
 
         return resource_wrapper
 
