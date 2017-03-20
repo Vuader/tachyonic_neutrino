@@ -54,8 +54,7 @@ class Request(object):
         self._read_field = False
         self._read_file = False
         self._post = None
-        query = urlparse.parse_qs(self.environ['QUERY_STRING'])
-        super(Request, self).__setattr__('query', query)
+        super(Request, self).__setattr__('query', Get(environ))
 
     def __setattr__(self, name, value):
         if name == 'method':
@@ -273,6 +272,41 @@ class Post(object):
         try:
             if k in self._cgi:
                 return self._cgi.getlist(k)
+            else:
+                return []
+        except TypeError:
+            return None
+
+
+class Get(object):
+    def __init__(self, environ):
+        self._cgi = urlparse.parse_qs(environ['QUERY_STRING'])
+
+    def __getitem__(self, key):
+        return self.get[key]
+
+    def __contains__(self, key):
+        try:
+            return key in self._cgi
+        except TypeError:
+            return False
+
+    def __iter__(self):
+        return iter(self._cgi)
+
+    def get(self, k, d=None):
+        try:
+            if k in self._cgi:
+                return ",".join(self._cgi.get(k))
+            else:
+                return d
+        except TypeError:
+            return None
+
+    def getlist(self, k):
+        try:
+            if k in self._cgi:
+                return self._cgi.get(k)
             else:
                 return []
         except TypeError:
