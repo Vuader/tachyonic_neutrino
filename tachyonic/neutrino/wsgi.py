@@ -57,10 +57,11 @@ class Wsgi(object):
             self.app_config = self.config.get('application')
             self.log_config = self.config.get('logging')
             app_name = self.app_config.get('name','tachyonic')
+            lfile = self.log_config.get('file', None)
             host = self.log_config.get('host')
             port = self.log_config.get('port', 514)
             debug = self.log_config.getboolean('debug')
-            self.logger = Logger(app_name, host, port, debug)
+            self.logger = Logger(app_name, host, port, debug, lfile)
             log.info("STARTING APPLICATION PROCESS FOR %s" % (app_name,))
             if debug is True:
                 restart.start(interval=1.0)
