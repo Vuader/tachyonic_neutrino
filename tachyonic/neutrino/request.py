@@ -82,6 +82,7 @@ class Request(object):
                 else:
                     raise Exception("'You cannot use post after" +
                                     " reading from body'")
+            self._read_field = True
             return self._post
         else:
             raise AttributeError("'request' object has no" +
