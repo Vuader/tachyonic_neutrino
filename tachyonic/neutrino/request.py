@@ -248,23 +248,31 @@ class Post(object):
         self._cgi = cgi.FieldStorage(fp=fp, environ=environ)
 
     def __getitem__(self, key):
-        return self._cgi[key]
+        return self.get[key]
 
     def __contains__(self, key):
-        return key in self._cgi
+        try:
+            return key in self._cgi
+        except TypeError:
+            return False
 
     def __iter__(self):
         return iter(self._cgi)
 
     def get(self, k, d=None):
-        if k in self._cgi:
-            return ",".join(self._cgi.getlist(k))
-        else:
-            return d
+        try:
+            if k in self._cgi:
+                return ",".join(self._cgi.getlist(k))
+            else:
+                return d
+        except TypeError:
+            return None
 
     def getlist(self, k):
-        if k in self._cgi:
-            return self._cgi.getlist(k)
-        else:
-            return []
-
+        try:
+            if k in self._cgi:
+                return self._cgi.getlist(k)
+            else:
+                return []
+        except TypeError:
+            return None
