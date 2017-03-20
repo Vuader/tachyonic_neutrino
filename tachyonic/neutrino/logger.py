@@ -53,12 +53,13 @@ class Logger(object):
         else:
             return ""
 
-    def __init__(self, app_name, host, port, debug):
+    def __init__(self, app_name, host, port, debug, lfile):
         self._request = {}
 
         logger = logging.getLogger()
 
         logger.setLevel(logging.DEBUG)
+
 
         if host is not None and (host == '127.0.0.1' or host == 'localhost'):
             if self._is_socket('/dev/log'):
@@ -72,6 +73,7 @@ class Logger(object):
                 syslog = logging.handlers.SysLogHandler(address=(host, port))
 
         stdout = logging.StreamHandler()
+
         self.stdout = stdout
 
         log_format = logging.Formatter('%(asctime)s ' + app_name + ' %(name)s[' + str(os.getpid()) +
@@ -82,6 +84,10 @@ class Logger(object):
             logger.addHandler(syslog)
         stdout.formatter = log_format
         logger.addHandler(stdout)
+        if lfile is not None:
+            fl = logging.FileHandler(lfile)
+            fl.formatter = log_format
+            logger.addHandler(fl)
 
         for handler in logging.root.handlers:
             handler.addFilter(self._Filter(debug=debug, get_extra=self._get_extra))
