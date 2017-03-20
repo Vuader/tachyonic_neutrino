@@ -268,12 +268,15 @@ class Post(object):
         except TypeError:
             return None
 
-    def getlist(self, k):
+    def getlist(self, k, d=None):
         try:
             if k in self._cgi:
                 return self._cgi.getlist(k)
             else:
-                return []
+                if d is not None:
+                    return d
+                else:
+                    return []
         except TypeError:
             return None
 
@@ -303,11 +306,14 @@ class Get(object):
         except TypeError:
             return None
 
-    def getlist(self, k):
+    def getlist(self, k, d=None):
         try:
             if k in self._cgi:
                 return self._cgi.get(k)
             else:
-                return []
+                if d is not None:
+                    return d
+                else:
+                    return []
         except TypeError:
             return None
