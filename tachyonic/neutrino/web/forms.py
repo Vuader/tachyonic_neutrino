@@ -26,7 +26,7 @@ class Base(ModelDict):
         if isinstance(data, request.Post):
             values = {}
             for v in data:
-                values[v] = data[v].value
+                values[v] = data[v]
         elif isinstance(data, request.Request):
             data = data.read()
             values = json.loads(data)

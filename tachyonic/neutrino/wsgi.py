@@ -32,6 +32,7 @@ from tachyonic.neutrino import exceptions
 from tachyonic.neutrino.web.dom import Dom
 from tachyonic.neutrino.utils.general import if_unicode_to_utf8
 from tachyonic.neutrino.policy import Policy
+from tachyonic.neutrino.redissy import redis
 
 
 log = logging.getLogger(__name__)

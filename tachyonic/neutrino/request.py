@@ -268,7 +268,7 @@ class Post(object):
         pass
 
     def __getitem__(self, key):
-        return self.get[key]
+        return self.get(key)
 
     def __contains__(self, key):
         try:
@@ -306,7 +306,7 @@ class Get(object):
         self._cgi = urlparse.parse_qs(environ['QUERY_STRING'])
 
     def __getitem__(self, key):
-        return self.get[key]
+        return self.get(key)
 
     def __contains__(self, key):
         try:
