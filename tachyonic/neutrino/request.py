@@ -29,6 +29,7 @@ class Request(object):
         super(Request, self).__setattr__('environ', environ)
         super(Request, self).__setattr__('method', environ['REQUEST_METHOD'])
         super(Request, self).__setattr__('app', environ['SCRIPT_NAME'])
+        super(Request, self).__setattr__('site', environ['SCRIPT_NAME'])
         super(Request, self).__setattr__('headers', Headers())
         super(Request, self).__setattr__('request_id', random_id(16))
 
