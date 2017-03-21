@@ -247,6 +247,10 @@ class Post(object):
     def __init__(self, fp, environ):
         self._cgi = cgi.FieldStorage(fp=fp, environ=environ)
 
+    def _detected_post(self):
+        """ DONT REMOVE USED FOR DETECTING OBJECT TYPE """
+        pass
+
     def __getitem__(self, key):
         return self.get[key]
 

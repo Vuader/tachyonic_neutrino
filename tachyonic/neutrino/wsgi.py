@@ -31,6 +31,7 @@ from tachyonic.neutrino import exceptions
 from tachyonic.neutrino.web.dom import Dom
 from tachyonic.neutrino.utils.general import if_unicode_to_utf8
 from tachyonic.neutrino.policy import Policy
+from tachyonic.neutrino.redissy import redis
 
 
 log = logging.getLogger(__name__)
@@ -204,8 +205,8 @@ class Wsgi(object):
             debug = self.log_config.getboolean('debug')
 
             if 'redis' in self.config:
-                redis = root.neutrino.redis(self.config)
-                session = SessionRedis(self.config, redis=redis)
+                rd = redis(self.config)
+                session = SessionRedis(self.config, redis=rd)
             else:
                 session = SessionFile(self.config, app_root=self.app_root)
             session_cookie = session.setup(environ)
