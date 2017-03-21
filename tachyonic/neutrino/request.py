@@ -171,6 +171,22 @@ class Request(object):
         url += quote(self.get_script())
         return url
 
+    def get_app_static(self):
+        url = self.get_proto()+'://'
+        url += self.get_host()
+
+        if self.get_proto() == 'https':
+            if self.get_port() != '443':
+                url += ':' + self.get_port()
+        elif self.get_proto() == 'http':
+            if self.get_port() != '80':
+                url += ':' + self.get_port()
+        
+        static = self.config.get("application").get("static", "/static")
+        url += static
+
+        return url
+
     def get_url(self):
         url = self.get_proto()+'://'
         url += self.get_host()
@@ -246,6 +262,10 @@ class Request(object):
 class Post(object):
     def __init__(self, fp, environ):
         self._cgi = cgi.FieldStorage(fp=fp, environ=environ)
+
+    def _detected_post(self):
+        """ DONT REMOVE USED FOR DETECTING OBJECT TYPE """
+        pass
 
     def __getitem__(self, key):
         return self.get[key]

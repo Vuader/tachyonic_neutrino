@@ -14,6 +14,7 @@ from jinja2.exceptions import TemplateNotFound
 
 import tachyonic as root
 from tachyonic.neutrino.config import Config
+from tachyonic.neutrino.redissy import redis
 from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino import restart
 from tachyonic.neutrino.router import Router
@@ -204,8 +205,8 @@ class Wsgi(object):
             debug = self.log_config.getboolean('debug')
 
             if 'redis' in self.config:
-                redis = root.neutrino.redis(self.config)
-                session = SessionRedis(self.config, redis=redis)
+                rd = redis(self.config)
+                session = SessionRedis(self.config, redis=rd)
             else:
                 session = SessionFile(self.config, app_root=self.app_root)
             session_cookie = session.setup(environ)
