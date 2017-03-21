@@ -67,6 +67,10 @@ class Base(ModelDict):
                                 if isinstance(field, ModelDict.Bool):
                                     if isinstance(values[v], str):
                                         self._set({v: True}, validate)
+                                    elif isinstance(values[v], int):
+                                        self._set({v: values[v]}, validate)
+                                    elif isinstance(values[v], unicode):
+                                        self._set({v: True}, validate)
                                     elif isinstance(values[v], bool):
                                         self._set({v: values[v]}, validate)
                                 elif isinstance(field, ModelDict.Password):

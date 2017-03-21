@@ -32,7 +32,6 @@ from tachyonic.neutrino import exceptions
 from tachyonic.neutrino.web.dom import Dom
 from tachyonic.neutrino.utils.general import if_unicode_to_utf8
 from tachyonic.neutrino.policy import Policy
-from tachyonic.neutrino.redissy import redis
 
 
 log = logging.getLogger(__name__)
@@ -168,7 +167,7 @@ class Wsgi(object):
                 resp.body = dom.get()
         elif resp.headers.get('Content-Type') == const.APPLICATION_JSON:
             j = {'error': {'title': title, 'description': description}}
-            resp.body = json.dumps(j)
+            resp.body = json.dumps(j, indent=4)
         else:
             if title is not None:
                 resp.write("%s\n" % (title,))
@@ -228,8 +227,10 @@ class Wsgi(object):
                 log.debug("Request QUERY: %s" % (req.environ['QUERY_STRING'],))
 
             response_headers = []
-
+            static = self.config.get('application').get('static',
+                                                        '').rstrip('/')
             root.jinja.globals['SITE'] = req.environ['SCRIPT_NAME']
+            root.jinja.globals['STATIC'] = static
             root.jinja.request['REQUEST'] = req
             if root.jinja.globals['SITE'] == '/':
                 root.jinja.globals['SITE'] = ''
