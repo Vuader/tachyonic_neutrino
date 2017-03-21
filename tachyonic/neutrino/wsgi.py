@@ -14,6 +14,7 @@ from jinja2.exceptions import TemplateNotFound
 
 import tachyonic as root
 from tachyonic.neutrino.config import Config
+from tachyonic.neutrino.redissy import redis
 from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino import restart
 from tachyonic.neutrino.router import Router
