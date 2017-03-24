@@ -215,6 +215,7 @@ def server(args):
     options = {
         'bind': '%s:%s' % (ip, port),
         'workers': number_of_workers(),
+        'capture_output': True
     }
     app_wsgi = app(app_root)
     app.router.add(const.HTTP_GET, static_path + '/*', serve_static)
