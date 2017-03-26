@@ -26,7 +26,6 @@ from tachyonic.neutrino.headers import Headers
 from tachyonic.neutrino.request import Request
 from tachyonic.neutrino.response import Response
 from tachyonic.neutrino.mysql import Mysql
-from tachyonic.client.restclient import RestClient
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino.web.dom import Dom
@@ -59,7 +58,7 @@ class Wsgi(object):
             self.log_config = self.config.get('logging')
             app_name = self.app_config.get('name','tachyonic')
             lfile = self.log_config.get('file', None)
-            host = self.log_config.get('host')
+            host = self.log_config.get('host', None)
             port = self.log_config.get('port', 514)
             debug = self.log_config.getboolean('debug')
             self.logger = Logger(app_name, host, port, debug, lfile)
@@ -178,7 +177,6 @@ class Wsgi(object):
 
     def _cleanup(self):
         root.jinja.clean_up()
-        RestClient().close_all()
         Mysql.close_all()
         self.logger.stdout.flush()
         sys.stdout.flush()
@@ -214,7 +212,6 @@ class Wsgi(object):
             mysql_config = self.config.get('mysql')
             if mysql_config.get('database') is not None:
                 Mysql(**mysql_config.dict())
-
             req = Request(environ, self.config, session, root.router, self.logger, self)
             resp = Response(req)
 

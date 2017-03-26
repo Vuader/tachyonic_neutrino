@@ -182,7 +182,7 @@ class Request(object):
         elif self.get_proto() == 'http':
             if self.get_port() != '80':
                 url += ':' + self.get_port()
-        
+
         static = self.config.get("application").get("static", "/static")
         url += static
 
@@ -280,10 +280,26 @@ class Post(object):
     def __iter__(self):
         return iter(self._cgi)
 
+    def getfile(self, k):
+        if k in self._cgi:
+            f = self._cgi[k]
+            name = f.filename
+            if name == '':
+                return None
+            data = f.file.read()
+            mtype = f.type
+            return ( name, mtype, data )
+        else:
+            return None
+
     def get(self, k, d=None):
         try:
             if k in self._cgi:
-                return ",".join(self._cgi.getlist(k))
+                val = ",".join(self._cgi.getlist(k))
+                if val == '':
+                    return None
+                else:
+                    return val
             else:
                 return d
         except TypeError:
@@ -321,7 +337,11 @@ class Get(object):
     def get(self, k, d=None):
         try:
             if k in self._cgi:
-                return ",".join(self._cgi.get(k))
+                val = ",".join(self._cgi.get(k))
+                if val == '':
+                    return None
+                else:
+                    return val
             else:
                 return d
         except TypeError:
