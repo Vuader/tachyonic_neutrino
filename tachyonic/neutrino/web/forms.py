@@ -26,7 +26,8 @@ class Base(ModelDict):
         if isinstance(data, request.Post):
             values = {}
             for v in data:
-                values[v] = data[v]
+                if v in self._declared_fields:
+                    values[v] = data[v]
         elif isinstance(data, request.Request):
             data = data.read()
             values = json.loads(data)
@@ -46,7 +47,7 @@ class Base(ModelDict):
                     if hasattr(self, v):
                         t = v.replace('_confirm', '')
                         field = getattr(self, t)
-                        if field.label is not None:
+                        if hasattr(field, 'label') and field.label is not None:
                             name = field.label
                         else:
                             name = v
