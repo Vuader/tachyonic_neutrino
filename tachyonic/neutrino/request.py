@@ -32,6 +32,7 @@ class Request(object):
         super(Request, self).__setattr__('site', environ['SCRIPT_NAME'])
         super(Request, self).__setattr__('headers', Headers())
         super(Request, self).__setattr__('request_id', random_id(16))
+        super(Request, self).__setattr__('view', None)
 
         self.logger.set_extra('(REQUEST:%s)' % self.request_id)
         self.logger.append_extra('(REMOTE_ADDR:%s)' % (self.environ['REMOTE_ADDR']))

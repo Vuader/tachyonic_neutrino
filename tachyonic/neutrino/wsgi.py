@@ -94,7 +94,6 @@ class Wsgi(object):
             except:
                 pass
             os.kill(os.getpid(), signal.SIGINT)
-            return self._error_app
 
     def _error_template(self, req, code):
         for module in self.modules:
@@ -342,11 +341,11 @@ class Wsgi(object):
                 mod = import_module(mod)
                 if hasattr(mod, cls):
                     cls = getattr(mod, cls)
-                    try:
-                        loaded.append(cls())
-                    except Exception as e:
-                        trace = str(traceback.format_exc())
-                        log.error("%s\n%s" % (str(e), trace))
+                    #try:
+                    loaded.append(cls())
+                    #except Exception as e:
+                    #    trace = str(traceback.format_exc())
+                    #    log.error("%s\n%s" % (str(e), trace))
                 else:
                     raise ImportError(m)
             else:
