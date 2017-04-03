@@ -111,6 +111,7 @@ class Form(forms.Base):
     def input(self, name, value, label=None, readonly=False, prefix=None,
               suffix=None, required=False, size=None, max_length=None,
               placeholder=None, password=False, cls=None):
+
         dom = Dom()
         form_group = dom.create_element('div')
         form_group.set_attribute('style', self._form_group_style)
@@ -149,6 +150,7 @@ class Form(forms.Base):
             f.set_attribute('type', 'text')
         f.set_attribute('value', value)
         f.set_attribute('class', 'form-control')
+
 
         if required is True:
             f.set_attribute('required')
@@ -229,3 +231,15 @@ class Form(forms.Base):
             s.append(suffix)
 
         return dom
+
+    def hidden_input(self, name, value):
+        dom = Dom()
+
+        f = dom.create_element('input')
+        f.set_attribute('type', 'hidden')
+        f.set_attribute('id', name)
+        f.set_attribute('name', name)
+        f.set_attribute('value', value)
+
+        return dom 
+

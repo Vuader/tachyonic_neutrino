@@ -201,7 +201,7 @@ class Wsgi(object):
         try:
             debug = self.log_config.getboolean('debug')
 
-            if 'redis' in self.config:
+            if 'redis' in self.config and 'server' in self.config['redis']:
                 rd = redis(self.config)
                 session = SessionRedis(self.config, redis=rd)
             else:
