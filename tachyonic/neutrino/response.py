@@ -78,9 +78,9 @@ class Response(object):
         super(Response, self).__setattr__('_io', StringIO())
         super(Response, self).__setattr__('content_length', 0)
         super(Response, self).__setattr__('_req', req)
-        self.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        self.headers['Progma'] = 'no-cache'
-        self.headers['Expires'] = 0
+        #self.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        #self.headers['Progma'] = 'no-cache'
+        #self.headers['Expires'] = 0
 
     def __setattr__(self, name, value):
         if name in self._attributes:

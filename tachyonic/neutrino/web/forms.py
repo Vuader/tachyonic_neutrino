@@ -33,6 +33,8 @@ class Base(ModelDict):
             values = json.loads(data)
         elif isinstance(data, dict):
             values = data
+        elif data is None:
+            values = None
         else:
             raise exceptions.Error('forms only accept request or dict object')
         try:
@@ -98,6 +100,12 @@ class Base(ModelDict):
                                                   validate)
                                     except:
                                         self._set({v: values[v]}, validate)
+                                elif isinstance(field, ModelDict.Text):
+                                    if field.password is False:
+                                        self._set({v: values[v]}, validate)
+                                    else:
+                                        if values[v] is not None and values[v] != '':
+                                            self._set({v: values[v]}, validate)
                                 else:
                                     self._set({v: values[v]}, validate)
 
@@ -117,7 +125,8 @@ class Base(ModelDict):
                 f.readonly = self.readonly
 
             if f.hidden is True:
-                pass
+                dom.append(self.hidden_input(key,
+                                             value))
             elif isinstance(f, ModelDict.Dict):
                 pass
             elif isinstance(f, ModelDict.List):
@@ -363,5 +372,16 @@ class Form(Base):
 
         if suffix is not None:
             dom.append(suffix)
+
+        return dom
+
+    def hidden_input(self, name, value):
+        dom = Dom()
+
+        f = dom.create_element('input')
+        f.set_attribute('type', 'hidden')
+        f.set_attribute('id', name)
+        f.set_attribute('name', name)
+        f.set_attribute('value', value)
 
         return dom

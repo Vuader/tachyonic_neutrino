@@ -393,6 +393,11 @@ class Field(ObjectName):
     def value(self):
         if isinstance(self, Fields.Password):
             return None
+        elif hasattr(self, 'password'):
+            if self.password is True:
+                return ""
+            else:
+                return self._data
         else:
             return self._data
 

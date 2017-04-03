@@ -88,45 +88,41 @@ class SessionBase(object):
 
 
 class SessionRedis(SessionBase):
+
+    def _load(self):
+        if self._redis.hexists(self._name, 'session'):
+            self._session = pickle.loads(self._redis.hget(self._name,
+                                                         'session'))
+        else:
+            self._session = {}
+
     def _save(self):
         self._redis.expire(self._name, self._expire)
+        self._redis.hset(self._name, 'session', pickle.dumps(self._session))
 
     def __setitem__(self, key, value):
-        self._redis.hset(self._name, key, value)
-        self._redis.expire(self._name, self._expire)
+        self._session[key] = value
 
     def __getitem__(self, key):
-        val = self._redis.hget(self._name, key)
-        if val == 'True':
-            return True
-        elif val == 'False':
-            return False
-        else:
-            return val
+        return self._session[key]
 
     def __delitem__(self, key):
-        self._redis.hdel(self._name, key)
+        try:
+            del self._session[key]
+        except KeyError:
+            pass
 
     def __contains__(self, key):
-        return self._redis.hexists(self._name, key)
+        return key in self._session
 
     def __iter__(self):
-        return iter(self._redis.hgetall(self._name))
+        return iter(self._session)
 
     def __len__(self):
-        return len(self._redis.hlen(self._name))
+        return len(self._session)
 
     def get(self, k, d=None):
-        if k in self:
-            val = self._redis.hget(self._name, k)
-            if val == 'True':
-                return True
-            elif val == 'False':
-                return False
-            else:
-                return val
-        else:
-            return d
+        return self._session.get(k, d)
 
 
 class SessionFile(SessionBase):

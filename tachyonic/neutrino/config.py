@@ -33,6 +33,12 @@ class Section(object):
         else:
             raise KeyError(key)
 
+    def __contains__(self, key):
+        if key in self.options:
+            return True
+        else:
+            return False
+
     def __iter__(self):
         return iter(self.config.items(self.section))
 

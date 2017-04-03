@@ -263,16 +263,22 @@ class Request(object):
 
 class Post(object):
     def __init__(self, fp, environ):
+        self.override = {}
         self._cgi = cgi.FieldStorage(fp=fp, environ=environ)
 
     def _detected_post(self):
         """ DONT REMOVE USED FOR DETECTING OBJECT TYPE """
         pass
 
+    def __setitem__(self, key, value):
+        self.override[key] = value
+
     def __getitem__(self, key):
         return self.get(key)
 
     def __contains__(self, key):
+        if key in self.override:
+            return True
         try:
             return key in self._cgi
         except TypeError:
@@ -294,6 +300,8 @@ class Post(object):
             return None
 
     def get(self, k, d=None):
+        if k in self.override:
+            return self.override[k]
         try:
             if k in self._cgi:
                 val = ",".join(self._cgi.getlist(k))
