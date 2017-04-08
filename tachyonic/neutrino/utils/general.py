@@ -3,10 +3,19 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import datetime
 import string
+import datetime
 import random
 import sys
+
+def istext(s):
+    # if s contains any null, it's not text:
+    if "\0" in s:
+        return False
+    # an "empty" string is "text" (arbitrary but reasonable choice):
+    if not s:
+        return True
+    return True
 
 
 def import_module(module):
