@@ -10,7 +10,7 @@ except ImportError:
     import ConfigParser as configparser
 import logging
 
-import tachyonic.neutrino
+from tachyonic.neutrino import exceptions
 
 log = logging.getLogger(__name__)
 
@@ -84,15 +84,17 @@ class Config(object):
     def __init__(self, config_file):
         self.config = {}
         self.sections = {}
-        if os.path.isfile(config_file):
+        if os.path.isfile(config_file) and os.access(config_file, os.R_OK):
             config = configparser.ConfigParser()
             config.read(config_file)
             sections = config.sections()
             for section in sections:
                 self.sections[section] = Section(section, config)
             self.config = config
+        elif not os.access(config_file, os.R_OK):
+            raise exceptions.Error('Configuration permission denied: %s' % config_file)
         else:
-            raise tachyonic.neutrino.Error('Configuration file not found: %s' % config_file)
+            raise exceptions.Error('Configuration file not found: %s' % config_file)
 
     def get(self, key):
         if key in self.sections:

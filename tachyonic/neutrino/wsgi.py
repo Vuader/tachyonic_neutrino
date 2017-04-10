@@ -32,7 +32,6 @@ from tachyonic.neutrino.web.dom import Dom
 from tachyonic.neutrino.utils.general import if_unicode_to_utf8
 from tachyonic.neutrino.policy import Policy
 
-
 log = logging.getLogger(__name__)
 
 root.router = Router()
@@ -87,8 +86,8 @@ class Wsgi(object):
 
         except Exception as e:
             trace = str(traceback.format_exc())
-            log.error("%s\n%s" % (e, trace))
-            log.error("RESTARTING (pid=%d)" % os.getpid())
+            print("%s\n%s" % (e, trace), file=sys.stderr)
+            print("RESTARTING (pid=%d)" % os.getpid(), file=sys.stderr)
             try:
                 self._cleanup()
             except:
