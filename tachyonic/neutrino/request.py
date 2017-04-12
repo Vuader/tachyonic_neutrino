@@ -151,6 +151,14 @@ class Request(object):
             url += quote(self.environ['PATH_INFO'])
         return url
 
+    def get_resource(self):
+        if 'PATH_INFO' in self.environ:
+            url = quote(self.environ['PATH_INFO'])
+            url = url.strip('/')
+            return '/' + url
+        else:
+            return '/'
+
     def get_full_path(self):
         url = self.get_path()
         if 'QUERY_STRING' in self.environ:
