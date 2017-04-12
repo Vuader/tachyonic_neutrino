@@ -47,7 +47,7 @@ class Wsgi(object):
         try:
             self.running = True
             os.chdir(app_root)
-            sys.path.append(app_root)
+            sys.path.insert(0, app_root)
             self.router = root.router
             self.app_root = app_root.rstrip('/')
             config = "%s/settings.cfg" % (self.app_root,)
