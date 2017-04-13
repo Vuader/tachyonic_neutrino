@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Tachyon WSGI Framework documentation build configuration file, created by
+# Tachyonic WSGI Framework documentation build configuration file, created by
 # sphinx-quickstart on Sun Mar 12 12:09:07 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -50,7 +50,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Tachyon WSGI Framework'
+project = u'Tachyonic WSGI Framework'
 copyright = u'2017, Christiaan Rademan, Allan Swanepoel, Dave Kruger'
 author = u'Christiaan Rademan, Allan Swanepoel, Dave Kruger'
 
@@ -106,7 +106,7 @@ html_logo = '_static/img/logo.png'
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'TachyonWSGIFrameworkdoc'
+htmlhelp_basename = 'TachyonicWSGIFrameworkdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -133,7 +133,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'TachyonWSGIFramework.tex', u'Tachyon WSGI Framework Documentation',
+    (master_doc, 'TachyonicWSGIFramework.tex', u'Tachyonic WSGI Framework Documentation',
      u'Christiaan Rademan, Allan Swanepoel, Dave Kruger', 'manual'),
 ]
 
@@ -143,7 +143,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'tachyonwsgiframework', u'Tachyon WSGI Framework Documentation',
+    (master_doc, 'tachyonwsgiframework', u'Tachyonic WSGI Framework Documentation',
      [author], 1)
 ]
 
@@ -154,7 +154,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'TachyonWSGIFramework', u'Tachyon WSGI Framework Documentation',
-     author, 'TachyonWSGIFramework', 'One line description of project.',
+    (master_doc, 'TachyonWSGIFramework', u'Tachyonic WSGI Framework Documentation',
+     author, 'TachyonicWSGIFramework', 'One line description of project.',
      'Miscellaneous'),
 ]

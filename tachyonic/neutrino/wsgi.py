@@ -40,10 +40,28 @@ root.render_template = root.jinja.render_template
 
 
 class Wsgi(object):
+    """This class is the main entry point into a Neutrino app.
+
+    Each API instance provides a callable WSGI interface.
+    """
+
     def __init__(self):
         self.running = False
 
     def __call__(self, app_root):
+        """Initialize WSGI Application.
+
+        Load settings.cfg, policies, logging and modules.
+
+        Args:
+            app_root (string): Root path for application where settings.cfg,
+            overriding templates, static files and application tmp is located.
+
+        Returns:
+            method: API callable for WSGI server. May be used to host an API or
+            called directly in order to simulate requests when testing API. See
+            PEP3333.
+        """
         try:
             self.running = True
             os.chdir(app_root)
@@ -179,12 +197,6 @@ class Wsgi(object):
         self.logger.stdout.flush()
         sys.stdout.flush()
         sys.stderr.flush()
-
-    def _error_app(self, environ, start_response):
-        start_response('500 Internal Server Error'.encode('utf-8'), [])
-        e = "{ \"error\": \"Tachyonic Neutrino Internal Application Error"
-        e += " - Please view logs\" }"
-        return [ str(e).encode('utf-8') ]
 
     # The application interface is a callable object
     def _interface(self, environ, start_response):

@@ -1,4 +1,0 @@
-.. _settings:
-
-settings.cfg
-============

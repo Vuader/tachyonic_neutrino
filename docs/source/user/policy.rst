@@ -1,4 +1,0 @@
-.. _policy:
-
-Policy Engine
-=============
