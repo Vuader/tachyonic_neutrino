@@ -26,6 +26,7 @@ _const.IMAGE_PNG = 'image/png'.encode('utf-8')
 _const.APPLICATION_XML = 'application/xml; charset=UTF-8'.encode('utf-8')
 _const.APPLICATION_JSON = 'application/json; charset=UTF-8'.encode('utf-8')
 _const.APPLICATION_OCTET_STREAM = 'application/octet-stream'.encode('utf-8')
+_const.APPLICATION_FORM_DATA = 'application/x-www-form-urlencoded'.encode('utf-8')
 
 _const.HTTP_GET = 'GET'
 _const.HTTP_POST = 'POST'
