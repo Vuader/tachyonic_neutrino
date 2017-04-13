@@ -55,7 +55,7 @@ class Wsgi(object):
 
         Args:
             app_root (string): Root path for application where settings.cfg,
-            overriding templates, static files and application tmp is located.
+                overriding templates, static files and application tmp is located.
 
         Returns:
             method: API callable for WSGI server. May be used to host an API or
