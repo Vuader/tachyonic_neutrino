@@ -1,21 +1,34 @@
-Welcome to Tachyon Neutrino documentation!
-==========================================
+Welcome to Tachyonic Neutrino documentation!
+============================================
 
 Release v\ |version| (:ref:`Installation <install>`)
 
-Tachyon is a flexible Python Web and RestApi application framework for rapid development. It's free and open source and before you ask: It's BSD Licensed! Contributions and contributors are welcome!
+Tachyon is a flexible Python WSGI Web and RestApi application framework for rapid development. It's free and open source and before you ask: It's BSD Licensed! Contributions and contributors are welcome!
 
 .. code:: python
 
-    class Books(nfw.Resource):
-        def __init__(tachyon.Resource):
-            app.router.add(tachyon.HTTP_GET, '/books/{id}', self.view_book)
+    import logging
 
-        def view_book(self, req, resp, id):
-            resp.headers['Content-Type'] = tachyon.TEXT_HTML
-            title, book = book(id)
-            t = tachyon.jinja.get_template('myproject/view_book.html')
-            resp_bdy = t.render(title=title, book=book)
+    import pyipcalc
+
+    from tachyonic import app
+    from tachyonic import jinja
+    from tachyonic.neutrino import constants as const
+
+	@app.resources()
+	class IPCalc():
+		def __init__(self):
+			app.router.add(const.HTTP_GET, '/ipcalc', self.ipcalc)
+			app.router.add(const.HTTP_POST, '/ipcalc', self.ipcalc)
+
+		def ipcalc(self, req, resp):
+			net = None
+			prefix = req.post.get('prefix', '192.168.0.0/24')
+			net = pyipcalc.IPNetwork(prefix)
+			t = jinja.get_template('ipcalc/ipcalc.html')
+
+			resp.body = t.render(prefix=prefix, net=net)
+
 
 Features
 --------
@@ -25,21 +38,24 @@ Features
 - Simple ORM. (serialized data json import and export)
 - Mariadb/Mysql Pool manager and simple interface
 - Policy/Rules Engine - Access control to resources.
+- Loading of resource classes/functions and middlware classes via configuration file.
 - Logging Facilities.
-- Loading of resource classes via configuration file.
 
 Useful Links
 ------------
 
-- `Tachyon Home <http://www.tachyonic.co.za/>`_
-- `Tachyon @ Pypi <#>`_
-- `Tachyon @ Github <https://github.com/TachyonProject/tachyon_core>`_
+- `Website <http://www.tachyonic.co.za/>`_
+- `Pypi <https://pypi.python.org/pypi/tachyonic.neutrino>`_.
+- `Github <https://github.com/TachyonProject/tachyonic_neutrino>`_.
+- `Join mailing list <http://tachyonic.co.za/cgi-bin/mailman/listinfo/tachyon>`__.
+- `Mail List Archives <http://tachyonic.co.za/pipermail/tachyon/>`__.
+- `Pypi <https://pypi.python.org/pypi/tachyonic.neutrino>`_.
 
 Documentation
 -------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    user/index

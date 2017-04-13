@@ -12,6 +12,7 @@ Quick Links
 * `Documentation <http://tachyonic-neutrino.readthedocs.io>`__.
 * `Join mailing list <http://tachyonic.co.za/cgi-bin/mailman/listinfo/tachyon>`__.
 * `Mail List Archives <http://tachyonic.co.za/pipermail/tachyon/>`__.
+* `Pypi <https://pypi.python.org/pypi/tachyonic.neutrino>`_.
 
 Installation
 ------------

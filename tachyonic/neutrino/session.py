@@ -97,8 +97,9 @@ class SessionRedis(SessionBase):
             self._session = {}
 
     def _save(self):
-        self._redis.expire(self._name, self._expire)
-        self._redis.hset(self._name, 'session', pickle.dumps(self._session))
+        if len(self._session) > 0:
+            self._redis.expire(self._name, self._expire)
+            self._redis.hset(self._name, 'session', pickle.dumps(self._session))
 
     def __setitem__(self, key, value):
         self._session[key] = value
@@ -150,18 +151,19 @@ class SessionFile(SessionBase):
             lock.release()
 
     def _save(self):
-        lock.acquire()
-        h = None
-        try:
-            h = open("%s%s.session" % (self._path, self._id,), 'wb', 0)
-            fcntl.flock(h, fcntl.LOCK_EX)
-            pickle.dump(self._session, h)
-            h.flush()
-            fcntl.flock(h, fcntl.LOCK_UN)
-        finally:
-            if h is not None:
-                h.close()
-            lock.release()
+        if len(self._session) > 0:
+            lock.acquire()
+            h = None
+            try:
+                h = open("%s%s.session" % (self._path, self._id,), 'wb', 0)
+                fcntl.flock(h, fcntl.LOCK_EX)
+                pickle.dump(self._session, h)
+                h.flush()
+                fcntl.flock(h, fcntl.LOCK_UN)
+            finally:
+                if h is not None:
+                    h.close()
+                lock.release()
 
     def __setitem__(self, key, value):
         self._session[key] = value
