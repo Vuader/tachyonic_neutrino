@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
@@ -8,6 +7,8 @@ from collections import OrderedDict
 from collections import Iterator
 from copy import copy
 from datetime import datetime
+from decimal import Decimal
+import decimal
 import json
 import uuid
 import re
@@ -147,7 +148,7 @@ class FieldChecks(object):
                                  value)
 
     def is_number(self, value):
-        if not isinstance(value, (int, long, float)):
+        if not isinstance(value, (int, long, float, Decimal)):
             raise exceptions.FieldError(self._name,
                                  self.label,
                                  'invalid number value',
@@ -403,7 +404,9 @@ class Field(ObjectName):
 
     class _JsonEncoder(json.JSONEncoder):
         def default(self, o):
-            if isinstance(o.value(), datetime):
+            if isinstance(o.value(), Decimal):
+                return str(o.value())
+            elif isinstance(o.value(), datetime):
                 return str(o.value().strftime("%Y/%m/%d %H:%M:%S"))
             elif isinstance(o, Fields.JsonObject):
                 if o.value() is not None and o.value().strip() != '':
@@ -701,12 +704,42 @@ class Fields(object):
             self._data = None
 
         def _set(self, value):
-            self._data = value
+            if isinstance(value, Decimal):
+                self._data = float(value)
+            else:
+                self._data = value
 
         def _validate(self, value):
             if value is not None:
                 self.is_number(value)
                 self.is_size(value)
+            return value
+
+    class Decimal(Field, FieldChecks):
+        _attributes = {
+            'minimum': None,
+            'maximum': None,
+            'round': 2,
+            }
+
+        def _init(self):
+            self._data = None
+
+        def _set(self, value):
+            if value is not None:
+                if self.round is not None:
+                    r = '0.' + (self.round - 1) * '0' + '1'
+                    self._data = Decimal(value).quantize(Decimal(r),
+                                                         decimal.ROUND_HALF_UP)
+                else:
+                    self._data = Decimal(value)
+            else:
+                self._data = None
+
+        def _validate(self, value):
+            if value is not None:
+                self.is_number(Decimal(value))
+                self.is_size(Decimal(value))
             return value
 
     class Bool(Field, FieldChecks):

@@ -147,7 +147,7 @@ class Wsgi(object):
     def _error_template(self, req, code):
         for module in self.modules:
             try:
-                t = self.inja.get_template("%s.html" % (code))
+                t = self.jinja.get_template("%s.html" % (code))
                 return t
             except TemplateNotFound:
                 pass
