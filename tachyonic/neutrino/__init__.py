@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-from .wsgi import app
+import tachyonic as root
+from .wsgi import Wsgi
+
 from . import metadata
 
 __version__ = metadata.version
@@ -15,4 +17,13 @@ def creation_counter():
     global _cc
     _cc += 1
     return _cc
+
+
+app = Wsgi()
+
+# BACKWARDS COMPATIBLE - Tachyonic namespace
+root.app = app
+root.router = app.router
+root.jinja = app.jinja
+root.render_template = app.render_template
 

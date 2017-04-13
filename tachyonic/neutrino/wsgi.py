@@ -1,3 +1,31 @@
+# Copyright (c) 2016-2017, Christiaan Frans Rademan, Allan Swanepoel, Dave Kruger.
+# All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of the copyright holders nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -12,7 +40,6 @@ import signal
 
 from jinja2.exceptions import TemplateNotFound
 
-import tachyonic as root
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino.redissy import redis
 from tachyonic.neutrino.logger import Logger
@@ -34,19 +61,28 @@ from tachyonic.neutrino.policy import Policy
 
 log = logging.getLogger(__name__)
 
-root.router = Router()
-root.jinja = template.Jinja()
-root.render_template = root.jinja.render_template
 
 
 class Wsgi(object):
     """This class is the main entry point into a Neutrino app.
 
+    Attributes:
+        router: Router Object used for adding routes.
+        jinja: Jinja Interface Object. template.Jinja()
+        get_template(template): Get Jinja Template shortcut.
+            template.Jinja.get_template(template)
+        render_template: Short cut Render Jinja Template.
+            template.Jinja.render_template(template, **kwargs)
+
+
     Each API instance provides a callable WSGI interface.
     """
 
     def __init__(self):
-        self.running = False
+        self.router = Router()
+        self.jinja = template.Jinja()
+        self.get_template = self.jinja.get_template
+        self.render_template = self.jinja.render_template
 
     def __call__(self, app_root):
         """Initialize WSGI Application.
@@ -58,15 +94,11 @@ class Wsgi(object):
                 overriding templates, static files and application tmp is located.
 
         Returns:
-            method: API callable for WSGI server. May be used to host an API or
-            called directly in order to simulate requests when testing API. See
-            PEP3333.
+            method: (self.interface) method callable from WSGI server.
         """
         try:
-            self.running = True
             os.chdir(app_root)
             sys.path.insert(0, app_root)
-            self.router = root.router
             self.app_root = app_root.rstrip('/')
             config = "%s/settings.cfg" % (self.app_root,)
             policy = "%s/policy.json" % (self.app_root,)
@@ -90,9 +122,9 @@ class Wsgi(object):
 
             self.modules = self._modules()
 
-            root.jinja.load_templates(self.config, app_root)
+            self.jinja.load_templates(self.config, app_root)
             middleware = self.app_config.getitems('middleware')
-            self.middleware = self._m_objs(self.modules, middleware)
+            self.middleware = self._middleware(self.modules, middleware)
 
             if os.path.isfile(policy):
                 policy = file(policy, 'r').read()
@@ -100,7 +132,7 @@ class Wsgi(object):
             else:
                 self.policy = None
 
-            return self._interface
+            return self.interface
 
         except Exception as e:
             trace = str(traceback.format_exc())
@@ -115,16 +147,16 @@ class Wsgi(object):
     def _error_template(self, req, code):
         for module in self.modules:
             try:
-                t = root.jinja.get_template("%s.html" % (code))
+                t = self.inja.get_template("%s.html" % (code))
                 return t
             except TemplateNotFound:
                 pass
             try:
                 if req.is_ajax():
-                    t = root.jinja.get_template("%s/%s_ajax.html" % (module, code))
+                    t = self.jinja.get_template("%s/%s_ajax.html" % (module, code))
                     return t
                 else:
-                    t = root.jinja.get_template("%s/%s.html" % (module, code))
+                    t = self.jinja.get_template("%s/%s.html" % (module, code))
                     return t
 
             except TemplateNotFound:
@@ -192,23 +224,30 @@ class Wsgi(object):
         return resp
 
     def _cleanup(self):
-        root.jinja.clean_up()
+        self.jinja.clean_up()
         Mysql.close_all()
         self.logger.stdout.flush()
         sys.stdout.flush()
         sys.stderr.flush()
 
     # The application interface is a callable object
-    def _interface(self, environ, start_response):
-        # environ points to a dictionary containing CGI like environment
-        # variables which is populated by the server for each
-        # received request from the client
-        # start_response is a callback function supplied by the server
-        # which takes the HTTP status and headers as arguments
+    def interface(self, environ, start_response):
+        """Interface callable for WSGI Server.
 
-        # When the method is POST the variable will be sent
-        # in the HTTP request body which is passed by the WSGI server
-        # in the file like wsgi.input environment variable.
+        May be used to host an API or called directly in order to simulate
+        requests when testing API. See PEP3333.
+
+        Args:
+            environ (dict): dictionary containing CGI like environment
+                variables which is populated by the server for each received
+                request from the client.
+            start_response (function): callback function supplied by the server
+                which takes the HTTP status and headers as arguments.
+
+        Returns:
+            Iterable: Iterable containing none unicode - string or binary
+            response body
+        """
         try:
             debug = self.log_config.getboolean('debug')
 
@@ -222,12 +261,12 @@ class Wsgi(object):
             mysql_config = self.config.get('mysql')
             if mysql_config.get('database') is not None:
                 Mysql(**mysql_config.dict())
-            req = Request(environ, self.config, session, root.router, self.logger, self)
+            req = Request(environ, self.config, session, self.router, self.logger, self)
             resp = Response(req)
 
             resp.headers['Set-Cookie'] = session_cookie
 
-            r = root.router.route(req)
+            r = self.router.route(req)
 
             if debug is True:
                 log.debug("Request URI: %s" % (req.get_full_path()))
@@ -236,15 +275,15 @@ class Wsgi(object):
             response_headers = []
             static = self.config.get('application').get('static',
                                                         '').rstrip('/')
-            root.jinja.globals['SITE'] = req.environ['SCRIPT_NAME']
-            root.jinja.globals['STATIC'] = static
-            root.jinja.request['REQUEST'] = req
-            if root.jinja.globals['SITE'] == '/':
-                root.jinja.globals['SITE'] = ''
-            root.jinja.globals['STATIC'] = self.app_config.get('static',
+            self.jinja.globals['SITE'] = req.environ['SCRIPT_NAME']
+            self.jinja.globals['STATIC'] = static
+            self.jinja.request['REQUEST'] = req
+            if self.jinja.globals['SITE'] == '/':
+                self.jinja.globals['SITE'] = ''
+            self.jinja.globals['STATIC'] = self.app_config.get('static',
                                                               '').rstrip('/')
-            if root.jinja.globals['STATIC'] == '/':
-                root.jinja.globals['STATIC'] = ''
+            if self.jinja.globals['STATIC'] == '/':
+                self.jinja.globals['STATIC'] = ''
 
             returned = None
             try:
@@ -287,7 +326,7 @@ class Wsgi(object):
                 log.error("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
 
-            resp.headers['X-Powered-By'] = 'Neutrino'
+            resp.headers['X-Powered-By'] = 'Tachyonic'
             resp.headers['X-Request-ID'] = req.request_id
             # HTTP headers expected by the client
             # They must be wrapped as a list of tupled pairs:
@@ -340,7 +379,7 @@ class Wsgi(object):
 
         return loaded
 
-    def _m_objs(self, modules, middleware):
+    def _middleware(self, modules, middleware):
         loaded = []
         for m in middleware:
             z = m.split('.')
@@ -352,11 +391,7 @@ class Wsgi(object):
                 mod = import_module(mod)
                 if hasattr(mod, cls):
                     cls = getattr(mod, cls)
-                    #try:
                     loaded.append(cls())
-                    #except Exception as e:
-                    #    trace = str(traceback.format_exc())
-                    #    log.error("%s\n%s" % (str(e), trace))
                 else:
                     raise ImportError(m)
             else:
@@ -365,18 +400,12 @@ class Wsgi(object):
 
     def resources(self):
         def resource_wrapper(f):
-            if self.running is True:
-                f()
+            f()
 
         return resource_wrapper
 
     def resource(self, method, resource, policy=None):
         def resource_wrapper(f):
-            if self.running is True:
-                return root.router.add(method, resource, f, policy)
+            return self.router.add(method, resource, f, policy)
 
         return resource_wrapper
-
-
-app = Wsgi()
-root.app = app
