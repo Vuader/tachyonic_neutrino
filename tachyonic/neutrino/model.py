@@ -738,6 +738,14 @@ class Fields(object):
 
         def _validate(self, value):
             if value is not None:
+                try:
+                    value = Decimal(value)
+                except:
+                    raise exceptions.FieldError(self._name,
+                                         self.label,
+                                         'invalid number value',
+                                         value)
+
                 self.is_number(Decimal(value))
                 self.is_size(Decimal(value))
             return value

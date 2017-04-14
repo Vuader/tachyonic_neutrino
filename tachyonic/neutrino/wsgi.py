@@ -97,6 +97,8 @@ class Wsgi(object):
             method: (self.interface) method callable from WSGI server.
         """
         try:
+            self.debug = True
+            self.logger = None
             os.chdir(app_root)
             sys.path.insert(0, app_root)
             self.app_root = app_root.rstrip('/')
@@ -109,17 +111,16 @@ class Wsgi(object):
             lfile = self.log_config.get('file', None)
             host = self.log_config.get('host', None)
             port = self.log_config.get('port', 514)
-            debug = self.log_config.getboolean('debug')
-            self.logger = Logger(app_name, host, port, debug, lfile)
+            self.debug = self.log_config.getboolean('debug')
+            self.logger = Logger(app_name, host, port, self.debug, lfile)
             log.info("STARTING APPLICATION PROCESS FOR %s" % (app_name,))
-            if debug is True:
+            if self.debug is True:
                 restart.start(interval=1.0)
                 restart.track(config)
                 restart.track(policy)
 
             self.context = {}
             self.app_config.getitems('modules')
-
             self.modules = self._modules()
 
             self.jinja.load_templates(self.config, app_root)
@@ -133,11 +134,14 @@ class Wsgi(object):
                 self.policy = None
 
             return self.interface
-
         except Exception as e:
             trace = str(traceback.format_exc())
-            print("%s\n%s" % (e, trace), file=sys.stderr)
-            print("RESTARTING (pid=%d)" % os.getpid(), file=sys.stderr)
+            if self.logger is not None:
+                log.error("%s\n%s" % (e, trace))
+                log.error("RESTARTING (pid=%d)" % os.getpid())
+            else:
+                print("%s\n%s" % (e, trace), file=sys.stderr)
+                print("RESTARTING (pid=%d)" % os.getpid(), file=sys.stderr)
             try:
                 self._cleanup()
             except:
@@ -249,8 +253,6 @@ class Wsgi(object):
             response body
         """
         try:
-            debug = self.log_config.getboolean('debug')
-
             if 'redis' in self.config and 'server' in self.config['redis']:
                 rd = redis(self.config)
                 session = SessionRedis(self.config, redis=rd)
@@ -268,7 +270,7 @@ class Wsgi(object):
 
             r = self.router.route(req)
 
-            if debug is True:
+            if self.debug is True:
                 log.debug("Request URI: %s" % (req.get_full_path()))
                 log.debug("Request QUERY: %s" % (req.environ['QUERY_STRING'],))
 
@@ -317,7 +319,7 @@ class Wsgi(object):
                         m.post(req, resp)
 
             except exceptions.HTTPError as e:
-                if debug is True:
+                if self.debug is True:
                     trace = str(traceback.format_exc())
                     log.error("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
