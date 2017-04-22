@@ -1,6 +1,6 @@
-# Copyright (c) 2016-2017, Christiaan Frans Rademan, Allan Swanepoel, Dave Kruger.
+# Copyright (c) 2016-2017, Christiaan Frans Rademan.
 # All rights reserved.
-
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -41,48 +41,57 @@ import signal
 from jinja2.exceptions import TemplateNotFound
 
 from tachyonic.neutrino.config import Config
-from tachyonic.neutrino.redissy import redis
 from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino import restart
 from tachyonic.neutrino.router import Router
 from tachyonic.neutrino import template
-from tachyonic.neutrino.utils.general import import_module
-from tachyonic.neutrino.session import SessionFile
-from tachyonic.neutrino.session import SessionRedis
-from tachyonic.neutrino.headers import Headers
+from tachyonic.common.imports import import_module
 from tachyonic.neutrino.request import Request
 from tachyonic.neutrino.response import Response
 from tachyonic.neutrino.mysql import Mysql
-from tachyonic.neutrino import constants as const
-from tachyonic.neutrino import exceptions
+from tachyonic.neutrino.redissy import redis
+from tachyonic.common import constants as const
+from tachyonic.common import exceptions
 from tachyonic.neutrino.web.dom import Dom
-from tachyonic.neutrino.utils.general import if_unicode_to_utf8
+from tachyonic.common.strings import if_unicode_to_utf8
 from tachyonic.neutrino.policy import Policy
+from tachyonic.neutrino.shrek import Shrek
 
 log = logging.getLogger(__name__)
-
 
 
 class Wsgi(object):
     """This class is the main entry point into a Neutrino app.
 
+    Each API instance provides a callable WSGI interface.
+
     Attributes:
+        app_root: Location of Application Root.
         router: Router Object used for adding routes.
         jinja: Jinja Interface Object. template.Jinja()
         get_template(template): Get Jinja Template shortcut.
             template.Jinja.get_template(template)
         render_template: Short cut Render Jinja Template.
-            template.Jinja.render_template(template, **kwargs)
-
-
-    Each API instance provides a callable WSGI interface.
+            template.Jinja.render_template(template, \**kwargs)
+        debug: Boolean if debug is enabled.
+        logger: Logger Object - Tachyon Logging Facility Manager.
+        context: Application Context - Per process
+        policy: Policy Engine Object
+        config: Configuration Object
     """
 
     def __init__(self):
+        self.app_root = os.getcwd()
         self.router = Router()
         self.jinja = template.Jinja()
         self.get_template = self.jinja.get_template
         self.render_template = self.jinja.render_template
+        self.debug = True
+        self.context = {}
+        self.policy = {}
+        self.config = Config()
+        self.logger = Logger()
+        self._cleanup_funcs = []
 
     def __call__(self, app_root):
         """Initialize WSGI Application.
@@ -97,58 +106,75 @@ class Wsgi(object):
             method: (self.interface) method callable from WSGI server.
         """
         try:
-            self.debug = True
-            self.logger = None
-            os.chdir(app_root)
-            sys.path.insert(0, app_root)
+            # Some default Attributes
             self.app_root = app_root.rstrip('/')
-            config = "%s/settings.cfg" % (self.app_root,)
-            policy = "%s/policy.json" % (self.app_root,)
-            self.config = Config(config)
+
+            # Ensure in application root
+            os.chdir(self.app_root)
+
+            # Prepend app_root to system path for python
+            # imports during development
+            sys.path.insert(0, self.app_root)
+
+            # Load Configuration
+            config_file_path = "%s/settings.cfg" % (self.app_root,)
+            self.config.load(config_file_path)
             self.app_config = self.config.get('application')
             self.log_config = self.config.get('logging')
-            app_name = self.app_config.get('name','tachyonic')
-            lfile = self.log_config.get('file', None)
-            host = self.log_config.get('host', None)
-            port = self.log_config.get('port', 514)
             self.debug = self.log_config.getboolean('debug')
-            self.logger = Logger(app_name, host, port, self.debug, lfile)
-            log.info("STARTING APPLICATION PROCESS FOR %s" % (app_name,))
+            self.app_name = self.app_config.get('name','tachyonic')
+
+            # Load Logger
+            self.logger.load(self.app_name, self.config)
+            log.info("STARTING APPLICATION PROCESS FOR %s" % (self.app_name,))
+
+            # Load Policy if exisits
+            policy_file_path = "%s/policy.json" % (self.app_root,)
+            if os.path.isfile(policy_file_path):
+                policy_file = file(policy_file_path, 'r')
+                self.policy = json.loads(policy_file.read())
+                policy_file.close()
+
+            # Monitor Python modules and configs for changes.
+            # If change detected kill myself... only while debug is enabled.
+            # This makes it easier to do development...
             if self.debug is True:
                 restart.start(interval=1.0)
-                restart.track(config)
-                restart.track(policy)
+                restart.track(config_file_path)
+                restart.track(policy_file_path)
 
-            self.context = {}
+            # Load/Import modules
             self.app_config.getitems('modules')
             self.modules = self._modules()
 
+            # Load Jinja Templates - Can only be performed after module import.
+            # If done before you get poorly handled error messages.
+            # Because jinja also trieds to import above moodules.
             self.jinja.load_templates(self.config, app_root)
+
+            # Load Middleware - at this point modules should
+            # already be imported.
             middleware = self.app_config.getitems('middleware')
             self.middleware = self._middleware(self.modules, middleware)
 
-            if os.path.isfile(policy):
-                policy = file(policy, 'r').read()
-                self.policy = json.loads(policy)
-            else:
-                self.policy = None
-
+            # Return WSGI Callable Interface
             return self.interface
+
         except Exception as e:
             trace = str(traceback.format_exc())
-            if self.logger is not None:
-                log.error("%s\n%s" % (e, trace))
-                log.error("RESTARTING (pid=%d)" % os.getpid())
-            else:
-                print("%s\n%s" % (e, trace), file=sys.stderr)
-                print("RESTARTING (pid=%d)" % os.getpid(), file=sys.stderr)
+            log.error("%s\n%s" % (e, trace))
+            log.error("RESTARTING (pid=%d)" % os.getpid())
+
             try:
                 self._cleanup()
             except:
                 pass
-            os.kill(os.getpid(), signal.SIGINT)
+
+            if self.debug is True:
+                os.kill(os.getpid(), signal.SIGINT)
 
     def _error_template(self, req, code):
+        # Scan for Custom Error templates.
         for module in self.modules:
             try:
                 t = self.jinja.get_template("%s.html" % (code))
@@ -227,9 +253,22 @@ class Wsgi(object):
 
         return resp
 
+    def register_cleanup(self, function):
+        """Register cleanup function run at end of request.
+
+        At every completed request the function will be executed.
+
+        Args:
+            function (function): Any callable to run at end of request.
+        """
+        self._cleanup_funcs.append(function)
+
     def _cleanup(self):
+        for func in self._cleanup_funcs:
+            func()
+
+        Shrek.close()
         self.jinja.clean_up()
-        Mysql.close_all()
         self.logger.stdout.flush()
         sys.stdout.flush()
         sys.stderr.flush()
@@ -253,28 +292,29 @@ class Wsgi(object):
             response body
         """
         try:
-            if 'redis' in self.config and 'server' in self.config['redis']:
-                rd = redis(self.config)
-                session = SessionRedis(self.config, redis=rd)
-            else:
-                session = SessionFile(self.config, app_root=self.app_root)
-            session_cookie = session.setup(environ)
-
+            # MYSQL Application Database
             mysql_config = self.config.get('mysql')
             if mysql_config.get('database') is not None:
                 Mysql(**mysql_config.dict())
-            req = Request(environ, self.config, session, self.router, self.logger, self)
+
+            # Redis
+            redis_config = self.config.get('redis')
+            if redis_config.get('host') is not None:
+                redis(**redis_config.dict())
+
+            # Request and Response Object
+            req = Request(environ, self)
             resp = Response(req)
 
-            resp.headers['Set-Cookie'] = session_cookie
-
-            r = self.router.route(req)
-
+            # Debug Request logging
             if self.debug is True:
                 log.debug("Request URI: %s" % (req.get_full_path()))
                 log.debug("Request QUERY: %s" % (req.environ['QUERY_STRING'],))
 
-            response_headers = []
+            # Router to route based on Request
+            r = self.router.route(req)
+
+            # JINJA Globals
             static = self.config.get('application').get('static',
                                                         '').rstrip('/')
             self.jinja.globals['SITE'] = req.environ['SCRIPT_NAME']
@@ -328,53 +368,54 @@ class Wsgi(object):
                 log.error("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
 
-            resp.headers['X-Powered-By'] = 'Tachyonic'
-            resp.headers['X-Request-ID'] = req.request_id
+            # Content Length Header
+            if returned is None:
+                resp.headers['Content-Length'] = resp.content_length
+            else:
+                if isinstance(returned, str):
+                    resp.headers['Content-Length'] = len(returned)
+
             # HTTP headers expected by the client
             # They must be wrapped as a list of tupled pairs:
             # [(Header name, Header value)].
+            response_headers = []
             for header in resp.headers:
                 header = if_unicode_to_utf8(header)
                 value = if_unicode_to_utf8(resp.headers[header])
                 h = (header, value)
                 response_headers.append(h)
 
-            content_length = None
-
-            if returned is None:
-                content_length = resp.content_length
-            else:
-                if isinstance(returned, str):
-                    content_length = len(returned)
-
-            if content_length is not None:
-                response_headers.append(('Content-Length'.encode('utf-8'),
-                                         str(content_length).encode('utf-8')))
+            # Set-Cookie Headers
+            response_headers += req.cookies.headers()
 
             # Send status and headers to the server using the supplied function
+            resp.status = if_unicode_to_utf8(resp.status)
             start_response(resp.status, response_headers)
 
             self._cleanup()
-            session.save()
+            req.session.save()
 
-            if returned is not None:
-                return returned
-            else:
+            if returned is None:
                 return resp
+            else:
+                return returned
+
         except Exception as e:
             trace = str(traceback.format_exc())
             log.error("%s\n%s" % (e, trace))
             log.error("RESTARTING (pid=%d)" % os.getpid())
+
             try:
                 self._cleanup()
             except:
                 pass
-            os.kill(os.getpid(), signal.SIGINT)
+
+            if self.debug is True:
+                os.kill(os.getpid(), signal.SIGINT)
 
     def _modules(self):
-        app_config = self.config.get('application')
         loaded = {}
-        modules = app_config.getitems('modules')
+        modules = self.app_config.getitems('modules')
         for module in modules:
             m = import_module(module)
             loaded[module] = m

@@ -1,6 +1,33 @@
+# Copyright (c) 2016-2017, Christiaan Frans Rademan.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of the copyright holders nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
@@ -10,9 +37,9 @@ try:
 except ImportError:
     from io import StringIO
 
-from tachyonic.neutrino import constants as const
-from tachyonic.neutrino.headers import Headers
-from tachyonic.neutrino.utils.general import if_unicode_to_utf8
+from tachyonic.common import constants as const
+from tachyonic.common.headers import Headers
+from tachyonic.common.strings import if_unicode_to_utf8
 from tachyonic.neutrino import router
 
 log = logging.getLogger(__name__)
@@ -73,14 +100,15 @@ class Response(object):
 
     def __init__(self, req=None):
         self.status = const.HTTP_200
-        super(Response, self).__setattr__('headers', Headers(request=False))
+        super(Response, self).__setattr__('headers', Headers())
         self.headers['Content-Type'] = const.TEXT_HTML
         super(Response, self).__setattr__('_io', StringIO())
         super(Response, self).__setattr__('content_length', 0)
         super(Response, self).__setattr__('_req', req)
-        #self.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        #self.headers['Progma'] = 'no-cache'
-        #self.headers['Expires'] = 0
+
+        # Default Headers
+        self.headers['X-Powered-By'] = 'Tachyonic'
+        self.headers['X-Request-ID'] = self._req.request_id
 
     def __setattr__(self, name, value):
         if name in self._attributes:

@@ -10,10 +10,9 @@ Tachyon is a flexible Python WSGI Web and RestApi application framework for rapi
     import logging
 
     import pyipcalc
-
-    from tachyonic import app
-    from tachyonic import jinja
-    from tachyonic.neutrino import constants as const
+    from tachyonic.neutrino import app
+    from tachyonic.neutrino import jinja
+    from tachyonic.common import constants as const
 
 	@app.resources()
 	class IPCalc():

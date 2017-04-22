@@ -21,9 +21,17 @@ def creation_counter():
 
 app = Wsgi()
 
+
 # BACKWARDS COMPATIBLE - Tachyonic namespace
+# These only work if Neutrino is imported.
+# DEPRECATED: This will be removed when possible in future!!!
 root.app = app
 root.router = app.router
 root.jinja = app.jinja
+root.get_template = app.get_template
 root.render_template = app.render_template
 
+# Global debug used to enhance performance.
+# Prevent modules code from logging. Even if its filtered by the logging
+# facilities this does improve resource usage.
+root.debug = app.debug

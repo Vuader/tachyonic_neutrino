@@ -1,4 +1,4 @@
-# Copyright (c) 2016-2017, Christiaan Frans Rademan.
+# Copyright (c) 2016-2017, Christiaan Frans Rademan.                                                                                                               
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,13 +31,55 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import logging
-import redis as rd
+try:
+    from http.cookies import SimpleCookie
+except ImportError:
+    from Cookie import SimpleCookie
 
-from tachyonic.neutrino.shrek import Shrek
+from tachyonic.common.strings import if_unicode_to_utf8
 
 log = logging.getLogger(__name__)
 
-shrek = Shrek('redis', rd.StrictRedis)
+class Cookies(object):
+    def __init__(self, req):
+        self.req = req
+        self.cookie = SimpleCookie()
 
-def redis(name='default', host='127.0.0.1', port=6379, db=0):
-    return shrek.get(name, host, port, db)
+        if 'HTTP_COOKIE' in req.environ:
+            self.cookie.load(req.environ['HTTP_COOKIE'])
+
+    def get(self, name, default=None):
+        if name in self.cookie:
+            return if_unicode_to_utf8(self.cookie[name].value)
+        else:
+            return default
+
+    def set(self, name, value, expire=3600):
+        host = self.req.get_host()
+
+        name = if_unicode_to_utf8(name)
+        value = if_unicode_to_utf8(value)
+
+        self.cookie[name] = value
+
+        host = self.req.get_host()
+
+        if host is not None:
+            self.cookie[name]['domain'] = host
+
+        if expire is not None and expire != 0:
+            self.cookie[name]['max-age'] = expire
+
+    def __contains__(self, cookie):
+        if cookie in self.cookie:
+            return True
+        else:
+            return False
+
+    def headers(self):
+        h = []
+        for cookie in self.cookie:
+            h.append((if_unicode_to_utf8('Set-Cookie'),
+                      if_unicode_to_utf8(self.cookie[cookie].OutputString())))
+        return h
+
