@@ -1,5 +1,33 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Copyright (c) 2016-2017, Christiaan Frans Rademan.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of the copyright holders nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 """Program entry point"""
 
 from __future__ import print_function
@@ -13,13 +41,14 @@ import logging
 import time
 import datetime
 import hashlib
-from wsgiref import simple_server
 
 from pkg_resources import resource_stream, resource_listdir, resource_isdir, resource_exists
+from tachyonic.common import constants as const
+from tachyonic.common.imports import import_module
 
+import tachyonic.neutrino
 from tachyonic.neutrino import app
-from tachyonic.neutrino import constants as const
-from tachyonic.neutrino.utils.general import import_module
+from tachyonic.neutrino.server import auto_restart
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino import metadata
 
@@ -32,20 +61,11 @@ def _create_dir(path, new):
         print('Created directory: %s' % new)
 
 
-def _copy_resource(path, src, dst=''):
-    dst = os.path.normpath('%s/%s/%s' % (path, dst, src))
-    src_file = resource_stream('tachyonic.neutrino', 'resources/%s' % (src)).read()
-    if not os.path.exists(dst):
-        with open(dst, 'wb') as handle:
-            handle.write(src_file)
-            print('Created %s' % dst)
-
-
 def _copy_file(module, path, src, dst, update=True):
     try:
         import_module(module)
-    except ImportError:
-        print("Neutrino python package not found %s" % module)
+    except ImportError as e:
+        print("Import Error %s\n%s" % (module, e))
         exit()
 
     dst = os.path.normpath("%s/%s" % (path, dst))
@@ -58,10 +78,11 @@ def _copy_file(module, path, src, dst, update=True):
         else:
             if update is False:
                 dst = "%s.default" % (dst,)
-                with open(dst, 'wb') as handle:
-                    handle.write(src_file)
-                    print("Updated %s" % dst)
-            else:
+                if not os.path.exists(dst):
+                    with open(dst, 'wb') as handle:
+                        handle.write(src_file)
+                        print("Created %s" % dst)
+
                 src_sig = hashlib.md5(src_file)
                 dst_file = open(dst, 'rb').read()
                 dst_sig = hashlib.md5(dst_file)
@@ -79,25 +100,25 @@ def _empty_file(path, src, dst=''):
             print("Created %s" % dst)
 
 
-def static(args):
+def _recursive_copy(local, module, path):
+    for filename in resource_listdir(module, path):
+        fullname = path + '/' + filename
+        if resource_isdir(module, fullname):
+            _create_dir(local, '/%s' % filename)
+            _recursive_copy("%s/%s" % (local, filename), module, fullname)
+        else:
+            _copy_file(module, local, fullname, filename)
+
+
+def _static(args):
     path = os.path.abspath(args.path)
     app_root = path
     os.chdir(app_root)
     sys.path.append(app_root)
     site.addsitedir(app_root)
 
-
-    def _walk(local, module, path):
-        for filename in resource_listdir(module, path):
-            fullname = path + '/' + filename
-            if resource_isdir(module, fullname):
-                _create_dir(local, '/%s' % fullname)
-                _walk(local, module, fullname)
-            else:
-                _copy_file(module, local, fullname, fullname)
-
-    if args.s is not None:
-        modules = [ args.s ]
+    if args.module is not None:
+        modules = [ args.module ]
     else:
         config = Config('%s/settings.cfg' % path)
         app_config = config.get('application')
@@ -107,148 +128,115 @@ def static(args):
         for module in modules:
             if resource_exists(module, 'static'):
                 _create_dir('', '%s/static' % path)
-                _walk(path, module, 'static')
+                _recursive_copy("%s/static" % path, module, 'static')
     else:
         print("Missing settings.cfg - check path specified")
         exit()
 
 
-def setup(args):
+def _setup(args):
     path = os.path.abspath(args.path)
-    module = args.s
+    module = args.module
+
     if module == 'tachyonic.neutrino':
         print("Your suppose to install tachyonic.neutrino modules not neutrino itself")
         exit()
-    _copy_file(module, path, 'resources/settings.cfg', 'settings.cfg', False)
-    _copy_file(module, path, 'resources/policy.json', 'policy.json', False)
+
+    if os.path.isfile("%s/settings.cfg" % path):
+        config = Config()
+        config.load("%s/settings.cfg" % path)
+        m = config.get('application').get('modules').replace(' ','').split(',')
+        if module not in m:
+            m.append(module)
+        m = "%s" % ", ".join(m)
+        config.get('application').set('modules', m)
+        config.save("%s/settings.cfg" % path)
+        _copy_file(module, path, 'resources/settings.cfg',
+                   '%s_settings.cfg.default' % module,
+                   True)
+    else:
+        _copy_file(module, path, 'resources/settings.cfg', 'settings.cfg', False)
+
+
+    if os.path.isfile("%s/policy.json" % path):
+        _copy_file(module, path, 'resources/policy.json',
+                   '%s_policy.json.default' % module,
+                   True)
+    else:
+        _copy_file(module, path, 'resources/policy.json', 'policy.json', True)
+
     _create_dir(path, '/wsgi')
-    _copy_resource(path, '/wsgi/app.py')
-    _copy_resource(path, '/wsgi/__init__.py')
+    _copy_file('tachyonic.neutrino', path, 'resources/wsgi/app.py', 'wsgi/app.py', False)
+    _copy_file('tachyonic.neutrino', path, 'resources/wsgi/__init__.py', 'wsgi/__init__.py')
     _create_dir(path, '/templates')
-    static(args)
+    _static(args)
     _create_dir(path, '/tmp')
     print("\nPlease ensure %s/tmp and sub-directories is writeable by Web Server User\n" %path)
 
 
-def server(args):
-    try:
-        from gunicorn.app.base import Application
-    except:
-        print("Requires Gunicorn - pip install gunicorn")
-        exit()
-
-    from gunicorn import util
-    import multiprocessing
-    import gunicorn.app.base
-    from gunicorn.six import iteritems
-
-    def number_of_workers():
-        return (multiprocessing.cpu_count() * 2) + 1
-
-    class StandaloneApplication(gunicorn.app.base.BaseApplication):
-        def __init__(self, app, options=None):
-            self.options = options or {}
-            self.application = app
-            super(StandaloneApplication, self).__init__()
-
-        def load_config(self):
-            config = dict([(key, value) for key, value in iteritems(self.options)
-                           if key in self.cfg.settings and value is not None])
-            for key, value in iteritems(config):
-                self.cfg.set(key.lower(), value)
-
-        def load(self):
-            return self.application
+def _server(args):
+    auto_restart(args.path, args.ip, args.port)
 
 
-    path = args.path
-
-    app_root = path
-    if os.path.exists("%s/settings.cfg" % (path,)):
-        config = Config("%s/settings.cfg" % (path,))
-        app_config = config.get('application')
-        static_path = app_config.get('static', '/static')
-    else:
-        print("Missing settings.cfg - check path specified")
-        exit()
-
-
-    def serve_static(req, resp):
-        sfile = open(req.get_path().strip('/'), 'rb').read()
-        sname = req.get_path().strip('/')
-        ssplit = sname.split('.')
-        sext = ssplit[len(ssplit)-1].lower()
-
-        try:
-            if "css" in sext:
-                resp.headers['Content-Type'] = const.TEXT_CSS
-            elif "txt" in sext:
-                resp.headers['Content-Type'] = const.TEXT_PLAIN
-            elif "html" in sext:
-                resp.headers['Content-Type'] = const.TEXT_HTML
-            elif "htm" in sext:
-                resp.headers['Content-Type'] = const.TEXT_HTML
-            elif "jpeg" in sext:
-                resp.headers['Content-Type'] = const.IMAGE_JPEG
-            elif "jpg" in sext:
-                resp.headers['Content-Type'] = const.IMAGE_JPEG
-            elif "gif" in sext:
-                resp.headers['Content-Type'] = const.IMAGE_GIF
-            elif "png" in sext:
-                resp.headers['Content-Type'] = const.IMAGE_PNG
-            else:
-                resp.headers['Content-Type'] = const.APPLICATION_OCTET_STREAM
-
-            return [ sfile ]
-        except Exception as e:
-            return "Error %s" % (e,)
-
+def _create(args):
     path = os.path.abspath(args.path)
-    print('Loading Application %s' % path)
-    ip = args.i
-    port = args.p
-
-    os.chdir(app_root)
-    sys.path.append(app_root)
-    site.addsitedir(app_root)
-
-    options = {
-        'bind': '%s:%s' % (ip, port),
-        'workers': number_of_workers(),
-        'capture_output': True
-    }
-    app_wsgi = app(app_root)
-    app.router.add(const.HTTP_GET, static_path + '/*', serve_static)
-    StandaloneApplication(app_wsgi, options).run()
-
-
-def create(args):
-    path = args.path
+    name = args.name
+    config = Config()
     if os.path.exists(path):
-        _copy_resource(path, '/settings.cfg')
+        if os.path.isfile("%s/settings.cfg" % path):
+            config.load("%s/settings.cfg" % path)
+            _copy_file('tachyonic.neutrino',
+                       path,
+                       'resources/settings.cfg',
+                       '%s_settings.cfg.default' % name)
+        else:
+            _copy_file('tachyonic.neutrino',
+                       path,
+                       'resources/settings.cfg',
+                       'settings.cfg')
+            config.load("%s/settings.cfg" % path)
+            config.get('application').set('name', name.replace('.',' ').upper())
+
+        m = config.get('application').get('modules').replace(' ','').split(',')
+        if name not in m:
+            if m[0] == "":
+                m[0] = name
+            else:
+                m.append(name)
+        m = ", ".join(m)
+        config.get('application').set('modules', m)
+        config.save("%s/settings.cfg" % path)
+
         _create_dir(path, '/wsgi')
-        _copy_resource(path, '/wsgi/app.py')
-        _copy_resource(path, '/wsgi/__init__.py')
+        _copy_file('tachyonic.neutrino',
+                   path,
+                   'resources/wsgi/app.py',
+                   'wsgi/app.py')
+        _copy_file('tachyonic.neutrino',
+                   path,
+                   'resources/wsgi/__init__.py',
+                   'wsgi/__init__.py')
+
         _create_dir(path, '/templates')
         _create_dir(path, '/static')
-        _create_dir(path, '/myproject')
-        _copy_resource(path, '/myproject/__init__.py')
-        _copy_resource(path, '/myproject/views.py')
-        _copy_resource(path, '/myproject/model.py')
-        _copy_resource(path, '/myproject/middleware.py')
-        _empty_file(path, '/myproject/model.py')
-        _create_dir(path, '/myproject/static')
-        _create_dir(path, '/myproject/static/myproject')
-        _create_dir(path, '/myproject/templates')
         _create_dir(path, '/tmp')
-        _create_dir(path, '/tmp/.cache')
-        _create_dir(path, '/tmp/.cache/Python-Eggs')
+        _create_dir(path, '/tmp/Python-Eggs')
+
+        package = "/%s" % name.replace('.', '/')
+        _create_dir(path, package)
+
+        _recursive_copy("%s/%s" % (path, package),
+                        'tachyonic.neutrino',
+                        'resources/myproject')
+
+        _create_dir(path, '/%s/static/%s' % (package, name))
+
         print("\nPlease ensure %s/tmp and sub-directories is writeable by Web Server User\n" % path)
     else:
         print("Invalid path")
 
 
-def session(args):
+def _session(args):
     path = args.path
     c = 0
     if os.path.exists("%s/settings.cfg" % (path,)):
@@ -280,30 +268,70 @@ def main(argv):
     description = metadata.description + ' ' + metadata.version
     parser = argparse.ArgumentParser(description=description)
     group = parser.add_mutually_exclusive_group(required=True)
-    parser.add_argument('path', help='Application root path')
-    group.add_argument('-c', help='Create new application root structure', dest='funcs', const=create, action='append_const')
-    group.add_argument('-e', help='Wipe expired sessions', dest='funcs', const=session, action='append_const')
-    group.add_argument('-s', help='Re-Initilize/Setup Application')
-    group.add_argument('-g', help='Collect and Populate /static as per settings.cfg modules', dest='funcs', const=static, action='append_const')
-    group.add_argument('-t', help='Start builtin server (only for testing)', dest='funcs', const=server, action='append_const')
-    parser.add_argument('-i', help='Binding IP Address (127.0.0.1)', default='127.0.0.1')
-    parser.add_argument('-p', help='Binding Port (8080)', default='8080')
+
+    parser.add_argument('path',
+                        help='Application root path')
+
+    group.add_argument('-c',
+                       dest='name',
+                       help='Create new application root structure')
+
+    group.add_argument('-e',
+                       help='Wipe expired sessions',
+                       dest='funcs',
+                       const=_session,
+                       action='append_const')
+
+    group.add_argument('-s',
+                       dest='module',
+                       help='Re-Initilize/Setup Application')
+
+    group.add_argument('-g',
+                       help='Collect and Populate /static as per' +
+                       'settings.cfg modules',
+                       dest='funcs',
+                       const=_static,
+                       action='append_const')
+
+    group.add_argument('-t',
+                       help='Start builtin server (only for testing)',
+                       dest='funcs',
+                       const=_server,
+                       action='append_const')
+
+    parser.add_argument('--ip',
+                        help='Binding IP Address (127.0.0.1)',
+                        default='127.0.0.1')
+
+    parser.add_argument('--port',
+                        help='Binding Port (8080)',
+                        default='8080')
+
     args = parser.parse_args()
+
     if 'path' in args:
         args.path = os.path.abspath(args.path)
         if not os.path.exists(args.path):
             print("Application Path invalid %s" % (args.path))
             exit()
+    else:
+        print("Application Path required" % (args.path))
+        exit()
+
     if args.funcs is not None:
         print("%s\n" % description)
         for f in args.funcs:
             f(args)
+
     if args.funcs is None or len(args.funcs) == 0:
-        if args.s is not None:
+        if args.module is not None:
             print("%s\n" % description)
-            setup(args)
+            _setup(args)
+        elif args.name is not None:
+            _create(args)
         else:
             parser.print_help()
+
     return 0
 
 

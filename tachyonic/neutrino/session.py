@@ -1,6 +1,33 @@
+# Copyright (c) 2016-2017, Christiaan Frans Rademan.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of the copyright holders nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
@@ -9,18 +36,11 @@ import pickle
 import time
 import datetime
 import fcntl
-try:
-    import _thread as thread
-    from http.cookies import SimpleCookie
-except ImportError:
-    import thread
-    from Cookie import SimpleCookie
-
 import threading
 
-from tachyonic.neutrino.headers import Headers
-from tachyonic.neutrino.utils.general import if_unicode_to_utf8
-from tachyonic.neutrino.utils.general import random_id
+from tachyonic.common.strings import if_unicode_to_utf8
+from tachyonic.common.ids import random_id
+from tachyonic.neutrino.redissy import redis
 
 log = logging.getLogger(__name__)
 
@@ -28,78 +48,45 @@ lock = threading.Lock()
 
 
 class SessionBase(object):
-    def __init__(self, config, **kwargs):
-        self._thread_id = thread.get_ident()
-        self.headers = Headers()
-        app_config = config.get('application')
-        self.use_x_forwarded_host = app_config.get('use_x_forwarded_host', False)
-        self._name = None
-        self._expire = app_config.get('session_expire', 3600)
-        self._id = None
-        if 'app_root' in kwargs:
-            self._path = "%s/tmp/" % (kwargs['app_root'],)
-        if 'redis' in kwargs:
-            self._redis = kwargs['redis']
-
-    def _get_host(self, environ):
-        if self.use_x_forwarded_host is True and 'X_FORWARDED_HOST' in self.headers:
-            return self.headers['X_FORWARDED_HOST']
-        elif 'SERVER_NAME' in self.environ:
-            return self.environ['SERVER_NAME']
-        elif 'SERVER_ADDR' in self.environ:
-            return self.environ['SERVER_ADDR']
-        else:
-            return None
-
-    def setup(self, environ):
-        for p in environ:
-            if len(p) > 5 and 'HTTP_' in p:
-                hk = p.replace('HTTP_', '')
-                self.headers[hk] = environ[p]
-
-        self.environ = environ
-
-        cookie = SimpleCookie()
+    def _cookie(self):
         name = if_unicode_to_utf8('tachyonic')
+        self._expire = self.req.config.get('application').get('session_timeout')
 
-        if 'HTTP_COOKIE' in self.environ:
-            cookie.load(self.environ['HTTP_COOKIE'])
-        if name in cookie:
-            id = if_unicode_to_utf8(cookie[name].value)
+        if name in self.req.cookies:
+            session_id = self.req.cookies.get(name)
         else:
-            id = if_unicode_to_utf8(random_id(16))
+            session_id = if_unicode_to_utf8(random_id(16))
+            self.req.cookies.set(name, session_id, self._expire)
 
-        self._id = if_unicode_to_utf8(id)
-        self._name = "session:%s" % (id,)
-        cookie[name] = if_unicode_to_utf8(id)
-        host = self._get_host(environ)
-        if host is not None:
-            cookie[name]['domain'] = host
-        cookie[name]['max-age'] = self._expire
-
-        cookie_string = cookie[name].OutputString()
-        if hasattr(self, '_load'):
-            self._load()
-        return cookie_string
-
-    def save(self):
-        if hasattr(self, '_save'):
-            self._save()
+        self._session_id = session_id
+        self._load()
 
 
 class SessionRedis(SessionBase):
+    def __init__(self, request):
+        self.req = request
+        self._redis = redis()
+        self._cookie()
 
     def _load(self):
+        self._name = "session:%s" % (self._session_id,)
         if self._redis.hexists(self._name, 'session'):
             self._session = pickle.loads(self._redis.hget(self._name,
                                                          'session'))
         else:
             self._session = {}
 
-    def _save(self):
+    def save(self):
         if len(self._session) > 0:
             self._redis.expire(self._name, self._expire)
             self._redis.hset(self._name, 'session', pickle.dumps(self._session))
+
+    def clear(self):
+        self._session = {}
+        try:
+            self._redis.hdel(self._name, 'session')
+        except:
+            pass
 
     def __setitem__(self, key, value):
         self._session[key] = value
@@ -127,18 +114,23 @@ class SessionRedis(SessionBase):
 
 
 class SessionFile(SessionBase):
+    def __init__(self, request):
+        self.req = request
+        self._path = "%s/tmp/" % (self.req.app_root,)
+        self._cookie()
+
     def _load(self):
         lock.acquire()
         try:
-            if os.path.isfile("%s%s.session" % (self._path, self._id,)):
+            if os.path.isfile("%s%s.session" % (self._path, self._session_id,)):
                 ts = int(time.mktime(datetime.datetime.now().timetuple()))
-                stat = os.stat("%s%s.session" % (self._path, self._id))
+                stat = os.stat("%s%s.session" % (self._path, self._session_id))
                 lm = int(stat.st_mtime)
                 if ts - lm > self._expire:
                     self._session = {}
 
-            if os.path.isfile("%s%s.session" % (self._path, self._id,)):
-                h = open("%s%s.session" % (self._path, self._id,), 'rb', 0)
+            if os.path.isfile("%s%s.session" % (self._path, self._session_id,)):
+                h = open("%s%s.session" % (self._path, self._session_id,), 'rb', 0)
                 fcntl.flock(h, fcntl.LOCK_EX)
                 try:
                     self._session = pickle.load(h)
@@ -150,12 +142,12 @@ class SessionFile(SessionBase):
         finally:
             lock.release()
 
-    def _save(self):
+    def save(self):
         if len(self._session) > 0:
             lock.acquire()
             h = None
             try:
-                h = open("%s%s.session" % (self._path, self._id,), 'wb', 0)
+                h = open("%s%s.session" % (self._path, self._session_id,), 'wb', 0)
                 fcntl.flock(h, fcntl.LOCK_EX)
                 pickle.dump(self._session, h)
                 h.flush()
@@ -164,6 +156,13 @@ class SessionFile(SessionBase):
                 if h is not None:
                     h.close()
                 lock.release()
+
+    def clear(self):
+        self._session = {}
+        try:
+            os.unlink("%s%s.session" % (self._path, self._session_id,))
+        except:
+            pass
 
     def __setitem__(self, key, value):
         self._session[key] = value

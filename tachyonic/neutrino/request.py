@@ -1,6 +1,33 @@
+# Copyright (c) 2016-2017, Christiaan Frans Rademan.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of the copyright holders nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
@@ -12,38 +39,47 @@ except ImportError:
     import urlparse
     from urllib import quote
 
-from tachyonic.neutrino.headers import Headers
-from tachyonic.neutrino.utils.general import random_id
+from tachyonic.common.headers import Headers
+from tachyonic.neutrino.cookies import Cookies
+from tachyonic.common.ids import random_id
+from tachyonic.neutrino.session import SessionFile
+from tachyonic.neutrino.session import SessionRedis
+from tachyonic.neutrino.redissy import redis
+
 
 log = logging.getLogger(__name__)
 
 
 class Request(object):
-    def __init__(self, environ, config, session, router, logger, app):
+    def __init__(self, environ, app):
         super(Request, self).__setattr__('context', {})
         super(Request, self).__setattr__('app_context', app.context)
-        super(Request, self).__setattr__('config', config)
-        super(Request, self).__setattr__('router', router)
-        super(Request, self).__setattr__('logger', logger)
-        super(Request, self).__setattr__('session', session)
+        super(Request, self).__setattr__('config', app.config)
+        super(Request, self).__setattr__('router', app.router)
+        super(Request, self).__setattr__('logger', app.logger)
         super(Request, self).__setattr__('environ', environ)
         super(Request, self).__setattr__('method', environ['REQUEST_METHOD'])
         super(Request, self).__setattr__('app', environ['SCRIPT_NAME'])
         super(Request, self).__setattr__('site', environ['SCRIPT_NAME'])
-        super(Request, self).__setattr__('headers', Headers())
+        super(Request, self).__setattr__('headers', Headers(environ))
+        super(Request, self).__setattr__('cookies', Cookies(self))
         super(Request, self).__setattr__('request_id', random_id(16))
+        super(Request, self).__setattr__('app_root', app.app_root)
         super(Request, self).__setattr__('view', None)
+
+        # Session Handling (req.session)
+        if 'redis' in self.config and 'host' in self.config['redis']:
+            session = SessionRedis(self)
+        else:
+            session = SessionFile(self)
+
+        super(Request, self).__setattr__('session', session)
 
         self.logger.set_extra('(REQUEST:%s)' % self.request_id)
         self.logger.append_extra('(REMOTE_ADDR:%s)' % (self.environ['REMOTE_ADDR']))
         script_filename = self.environ.get('SCRIPT_FILENAME', 'None')
         self.logger.append_extra('(WSGI:%s)' % (script_filename,))
 
-        for p in environ:
-            p.replace('.', '_').lower()
-            if len(p) > 5 and 'HTTP_' in p:
-                hk = p.replace('HTTP_', '')
-                self.headers[hk] = environ[p]
         try:
             super(Request, self).__setattr__('content_length',
                                              int(environ.get('CONTENT_LENGTH',
