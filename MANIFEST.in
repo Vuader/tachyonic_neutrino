@@ -19,6 +19,7 @@ global-exclude *.pyc
 include pavement.py
 include requirements-dev.txt
 include requirements.txt
+include dependency-links.txt
 include setup.py
 include tox.ini
 
