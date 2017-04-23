@@ -188,7 +188,7 @@ def _create(args):
             _copy_file('tachyonic.neutrino',
                        path,
                        'resources/settings.cfg',
-                       '%s_settings.cfg.default' % name)
+                       'neutrino_settings.cfg.default')
         else:
             _copy_file('tachyonic.neutrino',
                        path,
@@ -197,7 +197,7 @@ def _create(args):
             config.load("%s/settings.cfg" % path)
             config.get('application').set('name', name.replace('.',' ').upper())
 
-        m = config.get('application').get('modules').replace(' ','').split(',')
+        m = config.get('application').get('modules','').replace(' ','').split(',')
         if name not in m:
             if m[0] == "":
                 m[0] = name

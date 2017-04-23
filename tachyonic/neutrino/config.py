@@ -57,7 +57,7 @@ class Section(object):
             self.options = []
 
     def __getitem__(self, key):
-        if key in self.options:
+        if key in self.options and self.config.get(self.section, key).strip() != '':
             return self.config.get(self.section, key)
         else:
             raise KeyError(key)
@@ -67,7 +67,10 @@ class Section(object):
 
     def __contains__(self, key):
         if key in self.options:
-            return True
+            if self.config.get(self.section, key).strip() != '':
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -82,7 +85,11 @@ class Section(object):
 
     def get(self, key, default=None):
         if key in self.options:
-            return self.config.get(self.section, key)
+            val = self.config.get(self.section, key)
+            if val.strip() != '':
+                return val
+            else:
+                return default
         else:
             return default
 
@@ -103,7 +110,7 @@ class Section(object):
 
     def getitems(self, key):
         if key in self.options:
-            conf = self.get(key)
+            conf = self.get(key, '')
             conf = conf.replace(' ', '')
             if conf == '':
                 return []
