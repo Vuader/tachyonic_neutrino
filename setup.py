@@ -203,10 +203,18 @@ python_version_specific_requires = []
 if sys.version_info < (2, 7) or (3, 0) <= sys.version_info < (3, 3):
     python_version_specific_requires.append('argparse')
 
+# requirements.txt as install_requires
+# minimal dependencies to run.
 requirements = []
 if os.path.exists(os.path.join(os.path.dirname(__file__), 'requirements.txt')):
     with open(os.path.join(os.path.dirname(__file__), 'requirements.txt')) as req:
         requirements = req.read().splitlines()
+
+# dependency-links.txt as dependency_links
+dependency_links = []
+if os.path.exists(os.path.join(os.path.dirname(__file__), 'dependency-links.txt')):
+    with open(os.path.join(os.path.dirname(__file__), 'dependency-links.txt')) as req:
+        dependency_links = req.read().splitlines()
 
 # See here for more options:
 # <http://pythonhosted.org/setuptools/setuptools.html>
@@ -241,9 +249,8 @@ setup_dict = dict(
         'Topic :: Software Development :: Libraries :: Application Frameworks'
     ],
     packages=find_packages(exclude=(TESTS_DIRECTORY,)),
-    install_requires=[
-        requirements
-    ] + python_version_specific_requires,
+    install_requires=[] + python_version_specific_requires + requirements,
+    dependency_links=dependency_links,
     # Allow tests to be run with `python setup.py test'.
     tests_require=[
         'pytest==2.5.1',
