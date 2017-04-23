@@ -203,15 +203,15 @@ python_version_specific_requires = []
 if sys.version_info < (2, 7) or (3, 0) <= sys.version_info < (3, 3):
     python_version_specific_requires.append('argparse')
 
-# requirements.txt as install_requires
+# install-requires.txt as install_requires
 # minimal dependencies to run.
-requirements = []
-if os.path.exists(os.path.join(os.path.dirname(__file__), 'requirements.txt')):
-    with open(os.path.join(os.path.dirname(__file__), 'requirements.txt')) as req:
-        requirements = req.read().splitlines()
+install_requires = []
+if os.path.exists(os.path.join(os.path.dirname(__file__), 'install-requires.txt')):
+    with open(os.path.join(os.path.dirname(__file__), 'install-requires.txt')) as req:
+        install_requires = req.read().splitlines()
 
 # dependency-links.txt as dependency_links
-# locations of where to find dependencies within requirements.txt ie github.
+# locations of where to find dependencies within install-requires.txt ie github.
 # setuptools does work with url format for pip.
 dependency_links = []
 if os.path.exists(os.path.join(os.path.dirname(__file__), 'dependency-links.txt')):
@@ -251,7 +251,7 @@ setup_dict = dict(
         'Topic :: Software Development :: Libraries :: Application Frameworks'
     ],
     packages=find_packages(exclude=(TESTS_DIRECTORY,)),
-    install_requires=[] + python_version_specific_requires + requirements,
+    install_requires=[] + python_version_specific_requires + install_requires,
     dependency_links=dependency_links,
     # Allow tests to be run with `python setup.py test'.
     tests_require=[
