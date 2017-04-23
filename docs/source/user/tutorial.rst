@@ -36,7 +36,7 @@ This will create the neccesary stucture to run and start building your project.
 
 **project/myproject/models** - Modles Modules.
 
-**project/myproject/miodles/__init__.py** - Empty file.
+**project/myproject/models/__init__.py** - Empty file.
 
 **project/myproject/templates** - Jinja2 Templates specific to Application
 
@@ -45,6 +45,8 @@ This will create the neccesary stucture to run and start building your project.
 **project/templates/** Global templates. Simply creating a template in here for example templates/myproject/test.html will override the application template.
 
 **project/static/** Your WSGI Webserver will serve these files. To populate or update them based on configured applications in settings.cfg run: neutrino.py -g .
+
+**project/static/myproject/** Project Specific static files.
 
 **project/tmp/** Temporary Folder for session data etc. To clear session data files that expired run neutrino.py -e . (Its recommended to run a cron a job hourly)
 
@@ -315,9 +317,6 @@ MySQL/MariaDB
 Model ORM
 ---------
 
-
-Config/INI
-----------
 
 
 
