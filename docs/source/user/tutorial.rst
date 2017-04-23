@@ -142,6 +142,8 @@ Views
 -----
 A view method, or *'view'* for short, is simply a Python class method that takes a web request and returns web response. The response can be the HTML content of a web page, json for restapi, image or anything else. The view contains the the logic neccessary to return that response. You can place your views anywhere, as long as its imported in the settings.cfg modules. The convention is to put the views in a directory called views, placed in the the application directory. Each category or specific views would go in there own module which will be imported by the __init__.py of the views subpackage.
 
+When a page is requested, Neutrino creates a **Request Object** and **Response object**. If policy is applied to the route and passes then Neutrino loads the appropriate view, passing the Request as the first argument and Response as the second arguement to the view function/method.
+
 *Multiple views could be group within a class or single view within in a function.*
 
 A view could return content either via using return or resp.body. 
@@ -280,12 +282,23 @@ Each component’s pre and post methods are executed hierarchically, as a stack,
 *Note that each component need not implement all methods*
 
 
+Routing
+-------
 
 Request Object
 --------------
+The Request object contains metadata about the request. Request object behaves like a IO file/object. You can use **.read()** and **.readline()** to read the raw request body. However POST data is also included in the request body and can be access via **.post** dictionary like object.
+
+.. autoclass:: tachyonic.neutrino.request.Request
+   :members:
+
 
 Response Object
 ---------------
+The Response is contains the response headers, content, content_length and http_status for example. However keep in mind you can return data directly from your view without using the response object. Default stuats is set to 200 OK. esponse object behaves like a IO file/object. You can use **.write()** write to the response body. By setting a string value to the **.body** it will override anything from **.write()** method.
+
+.. autoclass:: tachyonic.neutrino.response.Response
+   :members:
 
 Logging
 -------
@@ -301,3 +314,11 @@ MySQL/MariaDB
 
 Model ORM
 ---------
+
+
+Config/INI
+----------
+
+
+
+

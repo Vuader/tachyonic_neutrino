@@ -211,6 +211,8 @@ if os.path.exists(os.path.join(os.path.dirname(__file__), 'requirements.txt')):
         requirements = req.read().splitlines()
 
 # dependency-links.txt as dependency_links
+# locations of where to find dependencies within requirements.txt ie github.
+# setuptools does work with url format for pip.
 dependency_links = []
 if os.path.exists(os.path.join(os.path.dirname(__file__), 'dependency-links.txt')):
     with open(os.path.join(os.path.dirname(__file__), 'dependency-links.txt')) as req:
