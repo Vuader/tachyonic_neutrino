@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (c) 2016-2017, Christiaan Frans Rademan.
 # All rights reserved.
 #
@@ -27,8 +28,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
@@ -40,22 +39,23 @@ import signal
 
 from jinja2.exceptions import TemplateNotFound
 
+from tachyonic.neutrino import restart
+from tachyonic.neutrino import template
+from tachyonic.common import exceptions
+from tachyonic.common import constants as const
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino.logger import Logger
-from tachyonic.neutrino import restart
 from tachyonic.neutrino.router import Router
-from tachyonic.neutrino import template
-from tachyonic.common.imports import import_module
 from tachyonic.neutrino.request import Request
 from tachyonic.neutrino.response import Response
 from tachyonic.neutrino.mysql import Mysql
 from tachyonic.neutrino.redissy import redis
-from tachyonic.common import constants as const
-from tachyonic.common import exceptions
 from tachyonic.neutrino.web.dom import Dom
-from tachyonic.common.strings import if_unicode_to_utf8
 from tachyonic.neutrino.policy import Policy
 from tachyonic.neutrino.shrek import Shrek
+from tachyonic.common.imports import import_module
+from tachyonic.common.strings import if_unicode_to_utf8
+
 
 log = logging.getLogger(__name__)
 
@@ -255,8 +255,6 @@ class Wsgi(object):
 
     def register_cleanup(self, function):
         """Register cleanup function run at end of request.
-
-        At every completed request the function will be executed.
 
         Args:
             function (function): Any callable to run at end of request.
