@@ -90,7 +90,7 @@ class Logger(object):
         debug = log_config.getboolean('debug')
 
         if debug is True:
-            self.log.setLevel(logging.NOTSET)
+            self.log.setLevel(logging.DEBUG)
 
 
         if syslog_host is not None:
