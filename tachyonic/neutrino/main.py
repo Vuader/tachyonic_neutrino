@@ -82,7 +82,7 @@ def _copy_file(module, path, src, dst, update=True):
                     with open(dst, 'wb') as handle:
                         handle.write(src_file)
                         print("Created %s" % dst)
-
+            else:
                 src_sig = hashlib.md5(src_file)
                 dst_file = open(dst, 'rb').read()
                 dst_sig = hashlib.md5(dst_file)
