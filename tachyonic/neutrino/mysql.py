@@ -45,7 +45,7 @@ import pymysql.cursors as cursors
 import tachyonic as root
 from tachyonic.neutrino.shrek import Shrek
 from tachyonic.common.timer import timer as nfw_timer
-from tachyonic.common.validate import is_text
+from tachyonic.common.strings import filter_none_text
 from tachyonic.common.threaddict import ThreadDict
 
 log = logging.getLogger(__name__)
@@ -173,10 +173,10 @@ def _log_query(query=None, params=None):
     parsed = []
     if params is not None:
         for param in params:
-            if is_text(param):
+            if isinstance(param, int) or isinstance(param, float):
                 parsed.append(param)
             else:
-                parsed.append('BINARY')
+                parsed.append('\'' + filter_none_text(param) + '\'')
     try:
         log_query = query % tuple(parsed)
     except Exception:

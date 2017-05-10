@@ -421,15 +421,14 @@ class Field(ObjectName):
         return key in self._data
 
     def value(self):
-        if isinstance(self, Fields.Password):
-            return None
-        elif hasattr(self, 'password'):
-            if self.password is True:
-                return ""
-            else:
-                return self._data
-        else:
-            return self._data
+        #if isinstance(self, Fields.Password):
+        #    return None
+        #elif hasattr(self, 'password'):
+        #    if self.password is True:
+        #        return ""
+        #    else:
+        #        return self._data
+        return self._data
 
     class _JsonEncoder(json.JSONEncoder):
         def default(self, o):
@@ -878,6 +877,13 @@ class Fields(object):
 
         def _set(self, value):
             if self.ignore is not True:
+                if value is not None and value != '':
+                    if (('$2a$' not in value or
+                         '$2b$' not in value or
+                         '$2y$' not in value) and
+                         len(value) < 30):
+                        if self.algo is not None:
+                            value = hash_password(value, self.algo, self.rounds)
                 self._data = value
 
         def _validate(self, value):
@@ -889,8 +895,6 @@ class Fields(object):
                         len(value) < 30):
                     self.validate_length(value)
                     self.validate_password(value)
-                    if self.algo is not None:
-                        value = hash.password(value, self.algo, self.rounds)
             return value
 
     class Uuid(Field, FieldChecks):
