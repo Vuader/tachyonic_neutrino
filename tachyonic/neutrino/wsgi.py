@@ -260,7 +260,8 @@ class Wsgi(object):
         Args:
             function (function): Any callable to run at end of request.
         """
-        self._cleanup_funcs.append(function)
+        if function not in self._cleanup_funcs:
+            self._cleanup_funcs.append(function)
 
     def _cleanup(self):
         for func in self._cleanup_funcs:
