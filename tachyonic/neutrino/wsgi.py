@@ -55,6 +55,7 @@ from tachyonic.neutrino.policy import Policy
 from tachyonic.neutrino.shrek import Shrek
 from tachyonic.common.imports import import_module
 from tachyonic.common.strings import if_unicode_to_utf8
+from tachyonic.common.dt import Datetime
 
 
 log = logging.getLogger(__name__)
@@ -324,6 +325,11 @@ class Wsgi(object):
                                                               '').rstrip('/')
             if self.jinja.globals['STATIC'] == '/':
                 self.jinja.globals['STATIC'] = ''
+
+            # Datetime Object and exposement
+            dt = Datetime()
+            req.context['datetime'] = dt
+            self.jinja.globals['DATETIME'] = dt
 
             returned = None
             try:
