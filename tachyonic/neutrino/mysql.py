@@ -39,6 +39,7 @@ if sys.version[0] == '2':
 else:
     import _thread as thread
     from queue import Queue
+import datetime
 
 import pymysql as MySQLdb
 import pymysql.cursors as cursors
@@ -47,6 +48,8 @@ from tachyonic.neutrino.shrek import Shrek
 from tachyonic.common.timer import timer as nfw_timer
 from tachyonic.common.strings import filter_none_text
 from tachyonic.common.threaddict import ThreadDict
+from tachyonic.common.dt import utc_time
+
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +63,6 @@ else:
 class MysqlWrapper(object):
     def __init__(self, name='default', host=None, username=None,
                  password=None, database=None, debug=debug):
-
         self.name = name
         self.debug = debug
 
@@ -185,7 +187,7 @@ def _log_query(query=None, params=None):
     return log_query
 
 
-def _parsed(params):
+def _parsed_params(params):
     parsed = []
     if params is not None:
         for param in params:
@@ -198,13 +200,20 @@ def _parsed(params):
                 parsed.append(param)
     return parsed
 
+def _parsed_results(results):
+    for result in results:
+        for field in result:
+            if isinstance(result[field], datetime.datetime):
+                result[field] = utc_time(result[field])
+    return results
+
 
 def execute(cursor, query=None, params=None):
     if debug is True:
         timer = nfw_timer()
 
     log_query = _log_query(query, params)
-    parsed = _parsed(params)
+    parsed = _parsed_params(params)
 
     try:
         cursor.execute(query, parsed)
@@ -222,7 +231,7 @@ def execute(cursor, query=None, params=None):
         else:
             log.debug("Query %s (DURATION: %s)" % (log_query, timer))
 
-    return result
+    return _parsed_results(result)
 
 
 def commit(db):

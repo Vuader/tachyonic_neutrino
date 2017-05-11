@@ -32,15 +32,18 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import logging
+import datetime
 
 try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
 
+from tachyonic.common import exceptions
 from tachyonic.common import constants as const
 from tachyonic.common.headers import Headers
 from tachyonic.common.strings import if_unicode_to_utf8
+from tachyonic.common.dt import utc_time
 from tachyonic.neutrino import router
 
 log = logging.getLogger(__name__)
@@ -111,6 +114,11 @@ class Response(object):
         self.headers['X-Powered-By'] = 'Tachyonic'
         self.headers['X-Request-ID'] = self._req.request_id
 
+        # CACHING
+        now = utc_time()
+        now = datetime.datetime.strftime(now, "%a, %d %b %Y %H:%M:%S GMT")
+        self.headers['Last-Modified'] = now
+
     def __setattr__(self, name, value):
         if name in self._attributes:
             super(Response, self).__setattr__(name, value)
@@ -121,6 +129,13 @@ class Response(object):
         else:
             AttributeError("'response' object can't bind" +
                            " attribute '%s'" % (name,))
+
+    def modified(self, datetime_obj):
+        datetime_obj = datetime.datetime.strftime(datetime_obj, "%a, %d %b %Y %H:%M:%S GMT")
+        self.headers['Last-Modified'] = str(datetime_obj)
+        if datetime_obj == self._req.cached:
+            raise exceptions.HTTPNotModified()
+
 
     def seek(self,position):
         self._io.seek(position)

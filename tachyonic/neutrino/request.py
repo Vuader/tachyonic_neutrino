@@ -33,6 +33,7 @@ from __future__ import unicode_literals
 
 import logging
 import cgi
+import datetime
 try:
     from urllib import parse as urlparse
     from urllib.parse import quote
@@ -94,6 +95,14 @@ class Request(object):
         self._read_file = False
         self._post = None
         super(Request, self).__setattr__('query', Get(environ))
+
+        # CACHING
+        if 'If-Modified-Since' in self.headers:
+            super(Request, self).__setattr__('cached',
+                                             self.headers['If-Modified-Since'])
+        else:
+            super(Request, self).__setattr__('cached',
+                                             None)
 
     def __setattr__(self, name, value):
         if name == 'method':

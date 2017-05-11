@@ -310,6 +310,16 @@ Error Handling
 
 Policy Engine
 -------------
+Each Neutrino service defines the access policies for its resources in an associated policy file. A resource, for example, could be API access, the ability to get, post, delete and put on a resource. The policy rules are specified in JSON format and the file is called policy.json. The syntax and format of this file is discussed in the Configuration Reference.
+
+These policies can be modified or updated by the administrator to control the access to the various resources. Ensure that any changes to the access control policies do not unintentionally weaken the security of any resource. Also note that changes to the policy.json file become effective after the service is restarted.
+
+A policy.json file is a text file in JSON (Javascript Object Notation) format. Each policy is defined by a one-line statement in the form "<target>" : "<rule>".
+
+The policy target, also named “action”, represents policy name. These policies can be applied when adding routes and validated in views.
+
+
+
 
 MySQL/MariaDB
 -------------
