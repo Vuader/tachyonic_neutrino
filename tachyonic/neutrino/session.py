@@ -49,6 +49,14 @@ lock = threading.Lock()
 
 
 class SessionBase(object):
+    def __init__(self, request):
+        self.req = request
+        self._do_not_save = False
+        self._session = {}
+        if hasattr(self, 'init'):
+            self.init()
+        self._cookie()
+
     def _cookie(self):
         name = if_unicode_to_utf8('tachyonic')
         self._expire = self.req.config.get('application').get('session_timeout')
@@ -62,32 +70,25 @@ class SessionBase(object):
         self._session_id = session_id
         self._load()
 
-
-class SessionRedis(SessionBase):
-    def __init__(self, request):
-        self.req = request
-        self._redis = redis()
-        self._cookie()
-
-    def _load(self):
-        self._name = "session:%s" % (self._session_id,)
-        if self._redis.hexists(self._name, 'session'):
-            self._session = pickle.loads(self._redis.hget(self._name,
-                                                         'session'))
-        else:
-            self._session = {}
+    def do_not_save(self):
+        self._do_not_save = True
 
     def save(self):
-        if len(self._session) > 0:
-            self._redis.expire(self._name, self._expire)
-            self._redis.hset(self._name, 'session', pickle.dumps(self._session))
+        if hasattr(self, '_save') and self._do_not_save is False:
+            self._save()
+        else:
+            log.debug("Not saving session on request")
+
+    def load(self):
+        if hasattr(self, '_load'):
+            self._load()
 
     def clear(self):
-        self._session = {}
-        try:
-            self._redis.hdel(self._name, 'session')
-        except:
-            pass
+        if hasattr(self, '_clear'):
+            self._clear()
+
+    def get(self, k, d=None):
+        return self._session.get(k, d)
 
     def __setitem__(self, key, value):
         self._session[key] = value
@@ -110,15 +111,34 @@ class SessionRedis(SessionBase):
     def __len__(self):
         return len(self._session)
 
-    def get(self, k, d=None):
-        return self._session.get(k, d)
 
+class SessionRedis(SessionBase):
+    def init(self):
+        self._redis = redis()
+
+    def _load(self):
+        self._name = "session:%s" % (self._session_id,)
+        if self._redis.hexists(self._name, 'session'):
+            self._session = pickle.loads(self._redis.hget(self._name,
+                                                         'session'))
+        else:
+            self._session = {}
+
+    def _save(self):
+        if len(self._session) > 0:
+            self._redis.expire(self._name, self._expire)
+            self._redis.hset(self._name, 'session', pickle.dumps(self._session))
+
+    def _clear(self):
+        self._session = {}
+        try:
+            self._redis.hdel(self._name, 'session')
+        except:
+            pass
 
 class SessionFile(SessionBase):
-    def __init__(self, request):
-        self.req = request
+    def init(self):
         self._path = "%s/tmp/" % (self.req.app_root,)
-        self._cookie()
 
     def _load(self):
         lock.acquire()
@@ -143,7 +163,7 @@ class SessionFile(SessionBase):
         finally:
             lock.release()
 
-    def save(self):
+    def _save(self):
         if len(self._session) > 0:
             lock.acquire()
             h = None
@@ -158,33 +178,9 @@ class SessionFile(SessionBase):
                     h.close()
                 lock.release()
 
-    def clear(self):
+    def _clear(self):
         self._session = {}
         try:
             os.unlink("%s%s.session" % (self._path, self._session_id,))
         except:
             pass
-
-    def __setitem__(self, key, value):
-        self._session[key] = value
-
-    def __getitem__(self, key):
-        return self._session[key]
-
-    def __delitem__(self, key):
-        try:
-            del self._session[key]
-        except KeyError:
-            pass
-
-    def __contains__(self, key):
-        return key in self._session
-
-    def __iter__(self):
-        return iter(self._session)
-
-    def __len__(self):
-        return len(self._session)
-
-    def get(self, k, d=None):
-        return self._session.get(k, d)
