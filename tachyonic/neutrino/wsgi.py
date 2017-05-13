@@ -196,28 +196,34 @@ class Wsgi(object):
         return None
 
     def _error(self, e, req, resp):
-        if hasattr(e, 'headers'):
-            resp.headers.update(e.headers)
+        if isinstance(e, exceptions.HTTPError) or isinstance(e, exceptions.ClientError):
+            if hasattr(e, 'headers'):
+                resp.headers.update(e.headers)
 
-        if hasattr(e, 'status'):
-            resp.status = e.status
-        else:
-            resp.status = const.HTTP_500
+            if hasattr(e, 'status'):
+                resp.status = e.status
+            else:
+                resp.status = const.HTTP_500
 
-        if hasattr(e, 'code'):
-            code = e.code
-        else:
-            code = resp.status.split(" ")[0]
+            if hasattr(e, 'code'):
+                code = e.code
+            else:
+                code = resp.status.split(" ")[0]
 
-        if hasattr(e, 'title'):
-            title = e.title
-        else:
-            title = None
+            if hasattr(e, 'title'):
+                title = e.title
+            else:
+                title = None
 
-        if hasattr(e, 'description'):
-            description = e.description
+            if hasattr(e, 'description'):
+                description = e.description
+            else:
+                description = repr(e)
         else:
+            title = const.HTTP_500
             description = repr(e)
+            code = 500
+            resp.status = const.HTTP_500
 
         resp.clear()
         if resp.headers.get('Content-Type') == const.TEXT_PLAIN:
@@ -366,7 +372,7 @@ class Wsgi(object):
             except exceptions.HTTPError as e:
                 if self.debug is True:
                     trace = str(traceback.format_exc())
-                    log.error("%s\n%s" % (e, trace))
+                    log.debug("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
             except Exception as e:
                 trace = str(traceback.format_exc())
