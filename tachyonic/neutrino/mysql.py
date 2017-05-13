@@ -72,12 +72,15 @@ class MysqlWrapper(object):
         self.cursor = self.db.cursor(cursors.DictCursor)
 
         self.uncommited = False
+        self.locks = False
 
     def ping(self):
         self.db.ping(True)
 
     def close(self):
         try:
+            if self.locks is True:
+                self.unlock()
             if self.uncommited is True:
                 self.rollback()
                 # Autocommit neccessary for next request to start new transactions.
@@ -112,11 +115,13 @@ class MysqlWrapper(object):
             lock = "READ"
         query = "LOCK TABLES %s %s" % (table, lock)
         result = execute(self.cursor, query)
+        self.locks = True
         return result
 
     def unlock(self):
         query = "UNLOCK TABLES"
         result = execute(self.cursor, query)
+        self.locks = False
         return result
 
     def commit(self):
