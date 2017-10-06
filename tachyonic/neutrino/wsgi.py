@@ -341,8 +341,7 @@ class Wsgi(object):
             returned = None
             try:
                 if r is not None:
-                    route, obj_kwargs = r
-                    method, route, obj, name = route
+                    obj, methods, obj_kwargs, route, name = r
                     req.args = obj_kwargs
                     req.view = name
                 else:
