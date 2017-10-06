@@ -2,8 +2,8 @@
 Tachyonic
 =========
 
-.. image:: https://travis-ci.org/TachyonProject/tachyonic_neutrino.svg?branch=master
-    :target: https://travis-ci.org/TachyonProject/tachyonic_neutrino
+.. image:: https://travis-ci.org/TachyonicProject/tachyonic_neutrino.svg?branch=master
+    :target: https://travis-ci.org/TachyonicProject/tachyonic_neutrino
 
 Quick Links
 -----------
@@ -20,14 +20,14 @@ Tachyon currently fully supports `CPython <https://www.python.org/downloads/>`__
 Source Code
 -----------
 
-Tachyon Neutrino infrastructure and code is hosted on `GitHub <https://github.com/TachyonProject/tachyonic_neutrino>`_.
+Tachyon Neutrino infrastructure and code is hosted on `GitHub <https://github.com/TachyonicProject/tachyonic_neutrino>`_.
 Making the code easy to browse, download, fork, etc. Pull requests are always welcome!
 
 Clone the project like this:
 
 .. code:: bash
 
-    $ git clone https://github.com/TachyonProject/tachyonic_neutrino.git
+    $ git clone https://github.com/TachyonicProject/tachyonic_neutrino.git
 
 Once you have cloned the repo or downloaded a tarball from GitHub, you
 can install Tachyon like this:

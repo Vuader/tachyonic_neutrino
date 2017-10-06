@@ -44,7 +44,7 @@ log = logging.getLogger(__name__)
 def view(uri, method, req, resp):
     req.method = method
     method = method.upper()
-    r = req.router._falcon.find(uri, req=method)
+    r = req.router._falcon[method].find(uri)
     if r is not None:
         obj, methods, obj_kwargs, route, name = r
         return obj(req, resp, **obj_kwargs)
@@ -66,10 +66,11 @@ class Router(object):
         view(uri, method, req, resp)
 
     def route(self, req):
-        uri = req.environ['PATH_INFO']
+        uri = req.environ['PATH_INFO'].strip('/')
         return self._falcon[req.method].find(uri)
 
     def add(self, methods, route, obj, name=None):
+        route = route.strip('/')
         self.routes.append((methods, route, obj, name))
         if not isinstance(methods, ( tuple, list)):
             methods = [ methods ]
