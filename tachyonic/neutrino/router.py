@@ -35,7 +35,8 @@ import logging
 import re
 import keyword
 
-import tachyonic.neutrino
+from tachyonic.neutrino.routing import CompiledRouter
+from tachyonic.common.exceptions import HTTPNotFound
 
 log = logging.getLogger(__name__)
 
@@ -43,74 +44,35 @@ log = logging.getLogger(__name__)
 def view(uri, method, req, resp):
     req.method = method
     method = method.upper()
-    r = req.router._match(method, uri.strip('/'))
+    r = req.router._falcon.find(uri, req=method)
     if r is not None:
-        route, obj_kwargs = r
-        method, route, obj, name = route
-        obj(req, resp, **obj_kwargs)
+        obj, methods, obj_kwargs, route, name = r
+        return obj(req, resp, **obj_kwargs)
     else:
-        raise tachyonic.neutrino.HTTPNotFound(description=uri)
+        raise HTTPNotFound(description=uri)
 
 
 class Router(object):
     def __init__(self):
-
+        self._falcon = {}
+        self._falcon['GET'] = CompiledRouter()
+        self._falcon['POST'] = CompiledRouter()
+        self._falcon['PUT'] = CompiledRouter()
+        self._falcon['PATCH'] = CompiledRouter()
+        self._falcon['DELETE'] = CompiledRouter()
         self.routes = []
 
     def view(self, uri, method, req, resp):
         view(uri, method, req, resp)
 
-    def _match(self, method, request_uri):
-        # Standard routing below
-        if "?" in request_uri:
-            uri, args = request_uri.split('?')
-            uri = uri.strip('/').split('/')
-        else:
-            uri = request_uri.split('/')
-
-        for r in self.routes:
-            r_method, r_uri, r_obj, r_name = r
-
-            w_uri = str(r_uri)
-            r_uri = r_uri.split('/')
-            if method == r_method:
-                if '*' in r_uri and w_uri.replace('/*','') in request_uri:
-                    return [r, {}]
-                if len(uri) == len(r_uri):
-                    kwargs = {}
-                    for (i, v) in enumerate(r_uri):
-                        if len(v) > 0 and v[0] == '{':
-                            v = v.replace('{', '').replace('}', '')
-                            kwargs[v] = uri[i]
-                        elif v != uri[i]:
-                            break
-                        if i+1 == len(r_uri):
-                            return [r, kwargs]
-        return None
-
     def route(self, req):
-        uri = req.environ['PATH_INFO'].strip('/')
-        if uri is None:
-            uri = ''
-        method = req.method
-        return self._match(method, uri)
+        uri = req.environ['PATH_INFO']
+        return self._falcon[req.method].find(uri)
 
-    def add(self, method, route, obj, name=None):
-        if re.search('\s', route):
-            raise ValueError('Route may not include whitespace.')
-        fields = re.findall('{([^}]*)}', route)
-        for field in fields:
-            is_identifier = re.match('[A-Za-z_][A-Za-z0-9_]+$', field)
-            if not is_identifier or field in keyword.kwlist:
-                raise ValueError('Field names must be valid identifiers.')
+    def add(self, methods, route, obj, name=None):
+        self.routes.append((methods, route, obj, name))
+        if not isinstance(methods, ( tuple, list)):
+            methods = [ methods ]
 
-        route = route.strip('/')
-        if self._match(method, route) is None:
-            r = list()
-            r.append(method)
-            r.append(route)
-            r.append(obj)
-            r.append(name)
-            self.routes.append(r)
-        else:
-            raise tachyonic.neutrino.Error('Adding duplicate API route %s' % (route))
+        for method in methods:
+            self._falcon[method].add_route(route, method, obj, name)
