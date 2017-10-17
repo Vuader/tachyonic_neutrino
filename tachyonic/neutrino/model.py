@@ -281,12 +281,16 @@ class Mysql(object):
                     insert.append("%s" % (field))
                     sql_str_values.append("%s" % ('%s'))
 
+        update = map((lambda x: x + "=%s"),insert)
+        update = ",".join(list(update))
         insert = ",".join(insert)
         sql_str_values = ",".join(sql_str_values)
 
         sql = "INSERT INTO %s (%s)" % (self.db_table, insert) +\
-              " VALUES (%s)" % (sql_str_values,)
-        self.db.execute(sql, tuple(values))
+              " VALUES (%s)" % (sql_str_values,) +\
+              " ON DUPLICATE KEY UPDATE %s" % (update)
+
+        self.db.execute(sql, tuple(values * 2))
 
         return self.db.last_row_id()
 
