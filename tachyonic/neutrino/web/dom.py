@@ -518,7 +518,7 @@ class Dom(object):
         for attribute in self.attributes:
             value = self.attributes[attribute]
             if value is not None:
-                if isinstance(value, str) or isinstance(value, unicode):
+                if isinstance(value, str) or isinstance(value, bytes):
                     value = value.replace("\"", "\\\"")
                 if value != '':
                     if attributes is not None:

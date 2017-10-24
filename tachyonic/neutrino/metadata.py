@@ -8,7 +8,7 @@ Information describing the project.
 package = 'tachyonic.neutrino'
 project = "Tachyonic Neutrino"
 project_no_spaces = project.replace(' ', '')
-version = '1.0.14'
+version = '2.0.0'
 description = 'Tachyonic Neutrino'
 authors = ['Christiaan Frans Rademan', 'Allan Swanepoel', 'Dave Kruger']
 authors_string = ', '.join(authors)

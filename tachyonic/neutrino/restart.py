@@ -27,10 +27,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import os
 import sys
 import signal
@@ -99,7 +95,7 @@ def _monitor():
     while 1:
         # Check modification times on all files in sys.modules.
 
-        for module in sys.modules.values():
+        for module in list(sys.modules.values()):
             if not hasattr(module, '__file__'):
                 continue
             path = getattr(module, '__file__')

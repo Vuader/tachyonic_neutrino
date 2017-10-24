@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2016-2017, Christiaan Frans Rademan.                                                                                                               
+# Copyright (c) 2016-2017, Christiaan Frans Rademan.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,6 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
 
 import logging
 try:
@@ -58,9 +54,6 @@ class Cookies(object):
     def set(self, name, value, expire=3600):
         host = self.req.get_host()
 
-        name = if_unicode_to_utf8(name)
-        value = if_unicode_to_utf8(value)
-
         self.cookie[name] = value
 
         host = self.req.get_host()
@@ -80,7 +73,7 @@ class Cookies(object):
     def headers(self):
         h = []
         for cookie in self.cookie:
-            h.append((if_unicode_to_utf8('Set-Cookie'),
-                      if_unicode_to_utf8(self.cookie[cookie].OutputString())))
+            h.append(('Set-Cookie',
+                      self.cookie[cookie].OutputString()))
         return h
 

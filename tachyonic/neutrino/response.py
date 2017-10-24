@@ -27,10 +27,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import logging
 import datetime
 
@@ -38,6 +34,7 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
+from io import BytesIO
 
 from tachyonic.common import exceptions
 from tachyonic.common import constants as const
@@ -106,7 +103,7 @@ class Response(object):
         self.status = const.HTTP_200
         super(Response, self).__setattr__('headers', Headers())
         self.headers['Content-Type'] = const.TEXT_HTML
-        super(Response, self).__setattr__('_io', StringIO())
+        super(Response, self).__setattr__('_io', BytesIO())
         super(Response, self).__setattr__('content_length', 0)
         super(Response, self).__setattr__('_req', req)
 
@@ -124,7 +121,7 @@ class Response(object):
             super(Response, self).__setattr__(name, value)
         elif name == 'body':
             self.clear()
-            super(Response, self).__setattr__('_io', StringIO())
+            super(Response, self).__setattr__('_io', BytesIO())
             self.write(value)
         else:
             AttributeError("'response' object can't bind" +
@@ -160,7 +157,7 @@ class Response(object):
 
     def clear(self):
         super(Response, self).__setattr__('content_length', 0)
-        super(Response, self).__setattr__('_io', StringIO())
+        super(Response, self).__setattr__('_io', BytesIO())
 
     def __iter__(self):
         self._io.seek(0)

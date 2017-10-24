@@ -27,11 +27,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import logging
 import logging.handlers
 import os
@@ -87,10 +82,12 @@ class Logger(object):
         log_file = log_config.get('file', None)
         syslog_host = log_config.get('host', None)
         syslog_port = log_config.get('port', 514)
-        debug = log_config.getboolean('debug')
+        debug = log_config.get_boolean('debug')
 
         if debug is True:
             self.log.setLevel(logging.DEBUG)
+        else:
+            self.log.setLevel(logging.WARNING)
 
 
         if syslog_host is not None:

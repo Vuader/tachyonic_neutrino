@@ -15,7 +15,7 @@ Quick Links
 Installation
 ------------
 
-Tachyon currently fully supports `CPython <https://www.python.org/downloads/>`__ 2.7.
+Tachyon currently fully supports `CPython <https://www.python.org/downloads/>`__ 3.6.
 
 Source Code
 -----------

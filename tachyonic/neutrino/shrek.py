@@ -27,18 +27,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import sys
 import logging
-if sys.version[0] == '2':
-    import thread
-    from Queue import Queue
-else:
-    import _thread as thread
-    from queue import Queue
+import _thread as thread
+from queue import Queue
 
 import pymysql as MySQLdb
 from tachyonic.common.threaddict import ThreadDict
