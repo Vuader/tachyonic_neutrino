@@ -27,10 +27,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import os
 import logging
 import pickle
@@ -58,8 +54,10 @@ class SessionBase(object):
         self._cookie()
 
     def _cookie(self):
-        name = if_unicode_to_utf8('tachyonic')
-        self._expire = self.req.config.get('application').get('session_timeout')
+        #name = if_unicode_to_utf8('tachyonic')
+        name = 'tachyonic'
+        self._expire = self.req.config.get('application').get_int('session_timeout',
+                                                                  3600)
 
         if name in self.req.cookies:
             session_id = self.req.cookies.get(name)

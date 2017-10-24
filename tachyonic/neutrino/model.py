@@ -27,10 +27,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import logging
 from collections import OrderedDict
 from collections import Iterator
@@ -100,7 +96,7 @@ class FieldChecks(object):
                                  self.minimum)
 
     def is_string(self, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, str):
             raise exceptions.FieldError(self._name,
                                  self.label,
                                  'invalid string value',
@@ -149,14 +145,14 @@ class FieldChecks(object):
 
     def is_datetime(self, value):
         if (not isinstance(value, datetime) and
-                not isinstance(value, basestring)):
+                not isinstance(value, str)):
             raise exceptions.FieldError(self._name,
                                  self.label,
                                  'invalid datetime value',
                                  value)
 
     def is_integer(self, value):
-        if not isinstance(value, (int, long)):
+        if not isinstance(value, int):
             raise exceptions.FieldError(self._name,
                                  self.label,
                                  'invalid integer value',
@@ -177,21 +173,21 @@ class FieldChecks(object):
                                  value)
 
     def is_number(self, value):
-        if not isinstance(value, (int, long, float, Decimal)):
+        if not isinstance(value, (int, float, Decimal)):
             raise exceptions.FieldError(self._name,
                                  self.label,
                                  'invalid number value',
                                  value)
 
     def is_bool(self, value):
-        if not isinstance(value, (int, long, float, bool)):
+        if not isinstance(value, (int, float, bool)):
             raise exceptions.FieldError(self._name,
                                  self.label,
                                  'invalid boolean value',
                                  value)
 
     def is_uuid(self, value):
-        if not isinstance(value, basestring) or len(value) != 36:
+        if not isinstance(value, str) or len(value) != 36:
             raise exceptions.FieldError(self._name,
                                  self.label,
                                  'invalid uuid value',

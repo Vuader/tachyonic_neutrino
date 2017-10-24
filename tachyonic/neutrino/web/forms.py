@@ -55,7 +55,7 @@ class Base(ModelDict):
             values = {}
             for v in data:
                 #if v in self._declared_fields:
-	        values[v] = data[v]
+                values[v] = data[v]
         elif isinstance(data, request.Request):
             data = data.read()
             values = json.loads(data)

@@ -27,11 +27,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import os
 import logging
 import traceback
@@ -97,7 +92,7 @@ class JinjaLoader(BaseLoader):
 
         self.config = config
         self.app_config = self.config.get('application')
-        self.modules = self.app_config.getitems('modules')
+        self.modules = self.app_config.get_items('modules')
         self.packages = {}
         self.encoding = 'utf-8'
         self.package_path = "templates"

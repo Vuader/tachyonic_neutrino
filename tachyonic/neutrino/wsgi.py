@@ -27,9 +27,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import unicode_literals
-
 import os
 import sys
 import logging
@@ -39,10 +36,14 @@ import signal
 
 from jinja2.exceptions import TemplateNotFound
 
-from tachyonic.neutrino import restart
-from tachyonic.neutrino import template
 from tachyonic.common import exceptions
 from tachyonic.common import constants as const
+from tachyonic.common.imports import import_module
+from tachyonic.common.strings import if_unicode_to_utf8
+from tachyonic.common.dt import Datetime
+
+from tachyonic.neutrino import restart
+from tachyonic.neutrino import template
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino.router import Router
@@ -53,10 +54,6 @@ from tachyonic.neutrino.redissy import redis
 from tachyonic.neutrino.web.dom import Dom
 from tachyonic.neutrino.policy import Policy
 from tachyonic.neutrino.shrek import Shrek
-from tachyonic.common.imports import import_module
-from tachyonic.common.strings import if_unicode_to_utf8
-from tachyonic.common.dt import Datetime
-
 
 log = logging.getLogger(__name__)
 
@@ -122,17 +119,17 @@ class Wsgi(object):
             self.config.load(config_file_path)
             self.app_config = self.config.get('application')
             self.log_config = self.config.get('logging')
-            self.debug = self.log_config.getboolean('debug')
+            self.debug = self.log_config.get_boolean('debug')
             self.app_name = self.app_config.get('name','tachyonic')
 
             # Load Logger
             self.logger.load(self.app_name, self.config)
             log.info("STARTING APPLICATION PROCESS FOR %s" % (self.app_name,))
 
-            # Load Policy if exisits
+            # Load Policy if exists
             policy_file_path = "%s/policy.json" % (self.app_root,)
             if os.path.isfile(policy_file_path):
-                policy_file = file(policy_file_path, 'r')
+                policy_file = open(policy_file_path, 'r')
                 self.policy = json.loads(policy_file.read())
                 policy_file.close()
 
@@ -145,7 +142,7 @@ class Wsgi(object):
                 restart.track(policy_file_path)
 
             # Load/Import modules
-            self.app_config.getitems('modules')
+            self.app_config.get_items('modules')
             self.modules = self._modules()
 
             # Load Jinja Templates - Can only be performed after module import.
@@ -155,7 +152,7 @@ class Wsgi(object):
 
             # Load Middleware - at this point modules should
             # already be imported.
-            middleware = self.app_config.getitems('middleware')
+            middleware = self.app_config.get_items('middleware')
             self.middleware = self._middleware(self.modules, middleware)
 
             # Return WSGI Callable Interface
@@ -338,7 +335,6 @@ class Wsgi(object):
             req.context['datetime'] = dt
             self.jinja.globals['DATETIME'] = dt
 
-            returned = None
             try:
                 if r is not None:
                     obj, methods, obj_kwargs, route, name = r
@@ -354,9 +350,13 @@ class Wsgi(object):
                     if hasattr(m, 'pre'):
                         m.pre(req, resp)
 
+                returned = None
                 if r is not None:
                     if req.view is None or policy.validate(req.view):
-                        returned = if_unicode_to_utf8(obj(req, resp, **obj_kwargs))
+                        returned = if_unicode_to_utf8(obj(req, resp,
+                                                          **obj_kwargs))
+                        if isinstance(returned, (str, bytes)):
+                            resp.write(returned)
                     else:
                         raise exceptions.HTTPForbidden('Access Forbidden',
                                                        'Access denied by application' +
@@ -379,19 +379,15 @@ class Wsgi(object):
                 self._error(e, req, resp)
 
             # Content Length Header
-            if returned is None:
-                resp.headers['Content-Length'] = resp.content_length
-            else:
-                if isinstance(returned, str):
-                    resp.headers['Content-Length'] = len(returned)
+            resp.headers['Content-Length'] = str(resp.content_length)
 
             # HTTP headers expected by the client
             # They must be wrapped as a list of tupled pairs:
             # [(Header name, Header value)].
             response_headers = []
             for header in resp.headers:
-                header = if_unicode_to_utf8(header)
-                value = if_unicode_to_utf8(resp.headers[header])
+                #header = if_unicode_to_utf8(header)
+                value = resp.headers[header]
                 h = (header, value)
                 response_headers.append(h)
 
@@ -399,16 +395,22 @@ class Wsgi(object):
             response_headers += req.cookies.headers()
 
             # Send status and headers to the server using the supplied function
-            resp.status = if_unicode_to_utf8(resp.status)
             start_response(resp.status, response_headers)
-
+           
+            # Clean Process
             self._cleanup()
+
+            # Save Client Session
             req.session.save()
 
-            if returned is None:
-                return resp
-            else:
+            # Return Body
+            if (not isinstance(returned, (str, bytes))
+                    and returned is not None):
+                # Return iterable object - from view.
                 return returned
+            else:
+                # Return response object
+                return resp
 
         except Exception as e:
             trace = str(traceback.format_exc())
@@ -425,7 +427,7 @@ class Wsgi(object):
 
     def _modules(self):
         loaded = {}
-        modules = self.app_config.getitems('modules')
+        modules = self.app_config.get_items('modules')
         for module in modules:
             m = import_module(module)
             loaded[module] = m

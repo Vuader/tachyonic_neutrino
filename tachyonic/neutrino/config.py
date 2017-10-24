@@ -27,10 +27,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import os
 try:
     import configparser
@@ -102,13 +98,28 @@ class Section(object):
             d[key] = self.config.get(self.section, key)
         return d
 
-    def getboolean(self, key=None, default=False):
+    def get_boolean(self, key=None, default=False):
         if key in self.options:
             return self.config.getboolean(self.section, key)
         else:
             return default
 
-    def getitems(self, key):
+    def get_int(self, key=None, default=False):
+        if key in self.options:
+            try:
+                return int(self.config.get(self.section, key))
+            except:
+                try:
+                    return int(default)
+                except:
+                    return 0
+        else:
+            try:
+                return int(default)
+            except:
+                return 0
+
+    def get_items(self, key):
         if key in self.options:
             conf = self.get(key, '')
             conf = conf.replace(' ', '')
@@ -120,7 +131,7 @@ class Section(object):
             return []
 
     def items(self, key):
-        return self.getitems(self, key)
+        return self.get_items(self, key)
 
 
 class Config(object):
@@ -163,11 +174,11 @@ class Config(object):
         else:
             return False
 
-    def getitems(self, key):
+    def get_items(self, key):
         if key in self.sections:
             return self.config.items(key)
         else:
             return []
 
     def items(self, key):
-        return self.getitems(self, key)
+        return self.get_items(self, key)
