@@ -33,7 +33,7 @@ try:
 except ImportError:
     from Cookie import SimpleCookie
 
-from tachyonic.common.strings import if_unicode_to_utf8
+from tachyonic.neutrino.strings import if_unicode_to_utf8
 
 log = logging.getLogger(__name__)
 

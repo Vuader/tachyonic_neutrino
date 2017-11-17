@@ -34,8 +34,7 @@ import logging
 import mimetypes
 from multiprocessing import Process
 
-from tachyonic.common import constants as const
-
+from tachyonic.neutrino import constants as const
 from tachyonic.neutrino import app
 from tachyonic.neutrino.config import Config
 

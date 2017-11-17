@@ -32,7 +32,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from tachyonic.common import exceptions
+from tachyonic.neutrino import exceptions
 
 
 class Dom(object):

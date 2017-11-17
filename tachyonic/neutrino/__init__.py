@@ -3,6 +3,8 @@ from __future__ import absolute_import
 
 import tachyonic as root
 from .wsgi import Wsgi
+from .restclient import RestClient
+from .client import Client
 
 from . import metadata
 

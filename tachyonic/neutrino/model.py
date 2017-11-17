@@ -40,10 +40,10 @@ import re
 
 import phonenumbers
 
-from tachyonic.common.cls import ObjectName
+from tachyonic.neutrino.cls import ObjectName
 from tachyonic.neutrino import creation_counter
-from tachyonic.common import exceptions
-from tachyonic.common import constants as const
+from tachyonic.neutrino import exceptions
+from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.password import hash as hash_password
 from tachyonic.neutrino.password import valid as is_password
 

@@ -34,7 +34,7 @@ except ImportError:
     import ConfigParser as configparser
 import logging
 
-from tachyonic.common import exceptions
+from tachyonic.neutrino import exceptions
 
 log = logging.getLogger(__name__)
 

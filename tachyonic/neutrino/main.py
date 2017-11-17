@@ -41,10 +41,10 @@ import datetime
 import hashlib
 
 from pkg_resources import resource_stream, resource_listdir, resource_isdir, resource_exists
-from tachyonic.common import constants as const
-from tachyonic.common.imports import import_module
 
 import tachyonic.neutrino
+from tachyonic.neutrino import constants as const
+from tachyonic.neutrino.imports import import_module
 from tachyonic.neutrino import app
 from tachyonic.neutrino.server import auto_restart
 from tachyonic.neutrino.config import Config

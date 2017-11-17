@@ -28,9 +28,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
-from tachyonic.common import constants as const
 import passlib.hash
 import passlib.context
+
+from tachyonic.neutrino import constants as const
 
 log = logging.getLogger(__name__)
 

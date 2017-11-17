@@ -36,7 +36,7 @@ try:
 except ImportError:
     import _thread as thread
 
-from tachyonic.common.validate import is_socket
+from tachyonic.neutrino.validate import is_socket
 
 class Logger(object):
     class _Extra(logging.Filter):
