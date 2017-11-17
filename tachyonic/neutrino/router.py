@@ -32,7 +32,7 @@ import re
 import keyword
 
 from tachyonic.neutrino.routing import CompiledRouter
-from tachyonic.common.exceptions import HTTPNotFound
+from tachyonic.neutrino.exceptions import HTTPNotFound
 
 log = logging.getLogger(__name__)
 

@@ -33,7 +33,8 @@ import _thread as thread
 from queue import Queue
 
 import pymysql as MySQLdb
-from tachyonic.common.threaddict import ThreadDict
+
+from tachyonic.neutrino.threaddict import ThreadDict
 
 log = logging.getLogger(__name__)
 

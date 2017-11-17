@@ -35,8 +35,8 @@ import datetime
 import fcntl
 import threading
 
-from tachyonic.common.strings import if_unicode_to_utf8
-from tachyonic.common.ids import random_id
+from tachyonic.neutrino.strings import if_unicode_to_utf8
+from tachyonic.neutrino.ids import random_id
 from tachyonic.neutrino.redissy import redis
 
 log = logging.getLogger(__name__)

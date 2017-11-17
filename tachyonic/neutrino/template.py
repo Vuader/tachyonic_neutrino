@@ -36,7 +36,8 @@ from jinja2 import Environment
 from jinja2.exceptions import TemplateNotFound
 from jinja2.loaders import BaseLoader
 from jinja2 import loaders
-from tachyonic.common.threaddict import ThreadDict
+
+from tachyonic.neutrino.threaddict import ThreadDict
 
 log = logging.getLogger(__name__)
 

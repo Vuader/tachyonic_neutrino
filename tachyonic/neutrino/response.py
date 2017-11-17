@@ -36,11 +36,11 @@ except ImportError:
     from io import StringIO
 from io import BytesIO
 
-from tachyonic.common import exceptions
-from tachyonic.common import constants as const
-from tachyonic.common.headers import Headers
-from tachyonic.common.strings import if_unicode_to_utf8
-from tachyonic.common.dt import utc_time
+from tachyonic.neutrino import exceptions
+from tachyonic.neutrino import constants as const
+from tachyonic.neutrino.headers import Headers
+from tachyonic.neutrino.strings import if_unicode_to_utf8
+from tachyonic.neutrino.dt import utc_time
 from tachyonic.neutrino import router
 
 log = logging.getLogger(__name__)
