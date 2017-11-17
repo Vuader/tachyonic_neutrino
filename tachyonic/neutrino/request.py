@@ -30,6 +30,7 @@
 import logging
 import cgi
 import datetime
+import json
 try:
     from urllib import parse as urlparse
     from urllib.parse import quote
@@ -130,6 +131,9 @@ class Request(object):
         else:
             raise AttributeError("'request' object has no" +
                                  " attribute '%s'" % (name,))
+
+    def json(self, size=0):
+        return json.loads(self._read_field().decode('utf-8'))
 
     def read(self, size=0):
         if self._read_field is False:
