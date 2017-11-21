@@ -8,3 +8,4 @@ phonenumbers==8.3.2
 gunicorn==19.7.0
 tzlocal
 pycurl
+pytz
