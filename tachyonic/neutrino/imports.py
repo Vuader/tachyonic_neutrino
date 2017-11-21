@@ -1,4 +1,5 @@
-# Copyright (c) 2016-2017, Christiaan Frans Rademan.
+# -*- coding: utf-8 -*-
+# Copyright (c) 2017, Christiaan Frans Rademan.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,9 +36,18 @@ log = logging.getLogger(__name__)
 
 
 def import_module(module):
+    log.debug('Importing module: %s' % module)
     __import__(module)
+    log.debug('Importing module: %s (Completed)' % module)
     return sys.modules[module]
 
+def import_modules(modules):
+    loaded = {}
+    for module in modules:
+        m = import_module(module)
+        loaded[module] = m
+
+    return loaded
 
 def get_class(cls):
     if cls is None:
@@ -50,4 +60,16 @@ def get_class(cls):
         module = import_module(m)
     except:
         raise ImportError("Cannot import '%s'" % cls)
-    return getattr(module, d)
+
+    if hasattr(module, d):
+        return getattr(module, d)
+    else:
+        raise ImportError("Cannot import '%s'" % cls)
+
+def init_classes(classes):
+    loaded = []
+
+    for cls in classes:
+        loaded.append(get_class(cls)())
+
+    return loaded

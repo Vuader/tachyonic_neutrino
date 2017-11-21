@@ -1,4 +1,5 @@
-# Copyright (c) 2016-2017, Christiaan Frans Rademan.
+# -*- coding: utf-8 -*-
+# Copyright (c) 2017, Christiaan Frans Rademan.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,10 +29,7 @@
 
 import sys
 import logging
-if sys.version[0] == '2':
-    import thread
-else:
-    import _thread as thread
+import _thread as thread
 import threading
 
 lock = threading.Lock()
