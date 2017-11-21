@@ -133,7 +133,6 @@ class Response(object):
         if datetime_obj == self._req.cached:
             raise exceptions.HTTPNotModified()
 
-
     def seek(self,position):
         self._io.seek(position)
 
@@ -170,6 +169,20 @@ class Response(object):
     def redirect(self, url):
         self.clear()
         http_see_other(url, self._req, self)
+
+    def wsgi_headers(self):
+        # HTTP headers expected by the client
+        # They must be wrapped as a list of tupled pairs:
+        # [(Header name, Header value)].
+
+        response_headers = []
+
+        for header in self.headers:
+            value = self.headers[header]
+            h = (header, value)
+            response_headers.append(h)
+
+        return response_headers + self._req.cookies.headers()
 
 
 def response_io_stream(f, chunk_size=None):
