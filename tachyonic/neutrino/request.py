@@ -133,7 +133,7 @@ class Request(object):
                                  " attribute '%s'" % (name,))
 
     def json(self, size=0):
-        return json.loads(self._read_field().decode('utf-8'))
+        return json.loads(self.read().decode('utf-8'))
 
     def read(self, size=0):
         if self._read_field is False:
