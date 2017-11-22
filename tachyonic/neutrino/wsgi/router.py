@@ -31,7 +31,7 @@ import logging
 import re
 import keyword
 
-from tachyonic.neutrino.routing import CompiledRouter
+from tachyonic.neutrino.wsgi.routing import CompiledRouter
 from tachyonic.neutrino.exceptions import HTTPNotFound
 
 log = logging.getLogger(__name__)

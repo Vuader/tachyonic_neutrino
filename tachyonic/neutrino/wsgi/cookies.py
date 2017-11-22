@@ -28,10 +28,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
-try:
-    from http.cookies import SimpleCookie
-except ImportError:
-    from Cookie import SimpleCookie
+from http.cookies import SimpleCookie
 
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 

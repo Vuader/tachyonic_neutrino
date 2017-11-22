@@ -37,7 +37,7 @@ lock = threading.Lock()
 log = logging.getLogger(__name__)
 
 
-class ThreadDict(object):
+class ThreadList(object):
     def __init__(self):
         self._threads = {}
 
@@ -46,7 +46,7 @@ class ThreadDict(object):
         try:
             self._thread_id = thread.get_ident()
             if self._thread_id not in self._threads:
-                self._threads[self._thread_id] = {}
+                self._threads[self._thread_id] = []
             return self._threads[self._thread_id]
         finally:
             lock.release()
@@ -60,32 +60,40 @@ class ThreadDict(object):
         finally:
             lock.release()
 
-    def __setitem__(self, key, value):
+    def append(self, value):
         data = self._thread()
         lock.acquire()
         try:
-            data[key] = value
+            data.append(value)
         finally:
             lock.release()
 
-    def __getitem__(self, key):
+    def __setitem__(self, item, value):
         data = self._thread()
-        if key in data:
-            return self.get(key)
+        lock.acquire()
+        try:
+            data[item] = value
+        finally:
+            lock.release()
+
+    def __getitem__(self, item):
+        data = self._thread()
+        if item in data:
+            return self.get(item)
         else:
-            raise KeyError(key)
+            raise IndexError('list index out of range')
 
-    def __delitem__(self, key):
+    def __delitem__(self, item):
         data = self._thread()
         lock.acquire()
         try:
-            del data[key]
+            del data[item]
         finally:
             lock.release()
 
-    def __contains__(self, key):
+    def __contains__(self, item):
         data = self._thread()
-        return key in data
+        return item in data
 
     def __iter__(self):
         data = self._thread()
@@ -102,15 +110,3 @@ class ThreadDict(object):
     def __str__(self):
         data = self._thread()
         return str(data)
-
-    def update(self, update):
-        data = self._thread()
-        lock.acquire()
-        try:
-            data.update(update)
-        finally:
-            lock.release()
-
-    def get(self, key, default=None):
-        data = self._thread()
-        return data.get(key, default)

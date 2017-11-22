@@ -38,11 +38,11 @@ except ImportError:
     import urlparse
     from urllib import quote
 
-from tachyonic.neutrino.headers import Headers
-from tachyonic.neutrino.cookies import Cookies
+from tachyonic.neutrino.wsgi.headers import Headers
+from tachyonic.neutrino.wsgi.cookies import Cookies
 from tachyonic.neutrino.ids import random_id
-from tachyonic.neutrino.session import SessionFile
-from tachyonic.neutrino.session import SessionRedis
+from tachyonic.neutrino.wsgi.session import SessionFile
+from tachyonic.neutrino.wsgi.session import SessionRedis
 from tachyonic.neutrino.redissy import redis
 
 
