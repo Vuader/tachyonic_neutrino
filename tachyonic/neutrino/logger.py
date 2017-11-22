@@ -58,7 +58,7 @@ class Logger(object):
     def __init__(self):
         self._request = ThreadList()
         self.log = logging.getLogger()
-        self.log.setLevel(logging.INFO)
+        self.log.setLevel(logging.DEBUG)
         self.stdout = logging.StreamHandler()
         self.log.addHandler(self.stdout)
         log_format = logging.Formatter('%(asctime)s ' + '%(name)s[' +
@@ -72,7 +72,7 @@ class Logger(object):
         if debug is True:
             self.log.setLevel(logging.DEBUG)
         else:
-            self.log.setLevel(logging.INFO)
+            self.log.setLevel(logging.WARNING)
 
         log_format = logging.Formatter('%(asctime)s ' + app_name + ' %(name)s[' + str(os.getpid()) +
                                        '] <%(levelname)s>: %(message)s %(extra)s', datefmt='%b %d %H:%M:%S')
