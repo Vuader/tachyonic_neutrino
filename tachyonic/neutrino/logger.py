@@ -31,12 +31,9 @@ import logging
 import logging.handlers
 import os
 import stat
-try:
-    import thread
-except ImportError:
-    import _thread as thread
 
 from tachyonic.neutrino.validate import is_socket
+from tachyonic.neutrino.threadlist import ThreadList
 
 class Logger(object):
     class _Extra(logging.Filter):
@@ -49,25 +46,17 @@ class Logger(object):
             return True
 
     def set_extra(self, value):
-        thread_id = thread.get_ident()
-        self._request[thread_id] = []
-        self._request[thread_id].append(value)
+        self._request.clear()
+        self._request.append(value)
 
     def append_extra(self, value):
-        thread_id = thread.get_ident()
-        if thread_id not in self._request:
-            self._request[thread_id] = []
-        self._request[thread_id].append(value)
+        self._request.append(value)
 
     def _get_extra(self):
-        thread_id = thread.get_ident()
-        if thread_id in self._request:
-            return " ".join(self._request[thread_id])
-        else:
-            return ""
+        return " ".join(self._request)
 
     def __init__(self):
-        self._request = {}
+        self._request = ThreadList()
         self.log = logging.getLogger()
         self.log.setLevel(logging.INFO)
         self.stdout = logging.StreamHandler()
@@ -77,35 +66,31 @@ class Logger(object):
                                        '] <%(levelname)s>: %(message)s', datefmt='%b %d %H:%M:%S')
         self.stdout.formatter = log_format
 
-    def load(self, app_name, config):
-        log_config = config.get('logging')
-        log_file = log_config.get('file', None)
-        syslog_host = log_config.get('host', None)
-        syslog_port = log_config.get('port', 514)
-        debug = log_config.get_boolean('debug')
+    def load(self, app_name='Neutrino', log_file=None, syslog_host='localhost',
+             syslog_port=514, debug=False):
 
         if debug is True:
             self.log.setLevel(logging.DEBUG)
         else:
-            self.log.setLevel(logging.WARNING)
-
-
-        if syslog_host is not None:
-            if syslog_host == '127.0.0.1' or syslog_host == 'localhost':
-                if is_socket('/dev/log'):
-                    syslog = logging.handlers.SysLogHandler(address='/dev/log')
-                elif is_socket('/var/run/syslog'):
-                    syslog = logging.handlers.SysLogHandler(address='/var/run/syslog')
-                else:
-                    syslog = logging.handlers.SysLogHandler(address=(syslog_host, syslog_port))
-            else:
-                syslog = logging.handlers.SysLogHandler(address=(syslog_host, syslog_port))
+            self.log.setLevel(logging.INFO)
 
         log_format = logging.Formatter('%(asctime)s ' + app_name + ' %(name)s[' + str(os.getpid()) +
                                        '] <%(levelname)s>: %(message)s %(extra)s', datefmt='%b %d %H:%M:%S')
 
         if syslog_host is not None:
-            self.log.addHandler(syslog)
+            if syslog_host == '127.0.0.1' or syslog_host.lower() == 'localhost':
+                if is_socket('/dev/log'):
+                    syslog = logging.handlers.SysLogHandler(address='/dev/log')
+                    self.log.addHandler(syslog)
+                elif is_socket('/var/run/syslog'):
+                    syslog = logging.handlers.SysLogHandler(address='/var/run/syslog')
+                    self.log.addHandler(syslog)
+                else:
+                    syslog = logging.handlers.SysLogHandler(address=(syslog_host, syslog_port))
+                    self.log.addHandler(syslog)
+            else:
+                syslog = logging.handlers.SysLogHandler(address=(syslog_host, syslog_port))
+                self.log.addHandler(syslog)
 
         if log_file is not None:
             self.log.addHandler(logging.FileHandler(log_file))

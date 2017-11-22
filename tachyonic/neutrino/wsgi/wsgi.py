@@ -38,23 +38,16 @@ from jinja2.exceptions import TemplateNotFound
 
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino import constants as const
-from tachyonic.neutrino.imports import import_module, get_class
-from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.dt import Datetime
-from tachyonic.neutrino import restart
-from tachyonic.neutrino import template
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino.logger import Logger
-from tachyonic.neutrino.router import Router
-from tachyonic.neutrino.request import Request
-from tachyonic.neutrino.response import Response
 from tachyonic.neutrino.mysql import Mysql
 from tachyonic.neutrino.redissy import redis
-from tachyonic.neutrino.web.dom import Dom
 from tachyonic.neutrino.policy import Policy
-from tachyonic.neutrino.shrek import Shrek
 from tachyonic.neutrino.wsgi.base import Base
 from tachyonic.neutrino.wsgi.error import Error
+from tachyonic.neutrino.wsgi.request import Request
+from tachyonic.neutrino.wsgi.response import Response
 
 log = logging.getLogger(__name__)
 
@@ -138,6 +131,7 @@ class Wsgi(Base, Error):
             req.context['datetime'] = dt
             self.jinja.globals['DATETIME'] = dt
 
+            returned = None
             try:
                 if r is not None:
                     obj, methods, obj_kwargs, route, name = r
@@ -153,7 +147,6 @@ class Wsgi(Base, Error):
                     if hasattr(m, 'pre'):
                         m.pre(req, resp)
 
-                returned = None
                 if r is not None:
                     if req.view is None or policy.validate(req.view):
                         returned = obj(req, resp, **obj_kwargs)

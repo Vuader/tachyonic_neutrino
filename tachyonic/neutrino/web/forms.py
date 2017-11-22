@@ -34,7 +34,7 @@ import json
 
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino.model import ModelDict
-from tachyonic.neutrino import request
+from tachyonic.neutrino.wsgi import request
 from tachyonic.neutrino.web.dom import Dom
 
 log = logging.getLogger(__name__)

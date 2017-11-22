@@ -38,7 +38,7 @@ from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.validate import is_text
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino import exceptions
-from tachyonic.neutrino.headers import Headers
+from tachyonic.neutrino.wsgi.headers import Headers
 
 log = logging.getLogger(__name__)
 

@@ -41,13 +41,13 @@ from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.imports import import_modules, init_classes
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.dt import Datetime
-from tachyonic.neutrino import restart
-from tachyonic.neutrino import template
+from tachyonic.neutrino.wsgi import restart
+from tachyonic.neutrino.wsgi import template
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino.logger import Logger
-from tachyonic.neutrino.router import Router
-from tachyonic.neutrino.request import Request
-from tachyonic.neutrino.response import Response
+from tachyonic.neutrino.wsgi.router import Router
+from tachyonic.neutrino.wsgi.request import Request
+from tachyonic.neutrino.wsgi.response import Response
 from tachyonic.neutrino.mysql import Mysql
 from tachyonic.neutrino.redissy import redis
 from tachyonic.neutrino.web.dom import Dom
@@ -103,7 +103,13 @@ class Base(object):
             self.app_name = self.app_config.get('name','tachyonic')
 
             # Load Logger
-            self.logger.load(self.app_name, self.config)
+            log_config = self.config.get('logging')
+            self.logger.load(app_name=self.app_name,
+                             syslog_host=log_config.get('host', None),
+                             syslog_port=log_config.get('port', 514),
+                             debug=self.debug,
+                             log_file=log_config.get('file', None))
+
             log.info("STARTING APPLICATION PROCESS FOR %s" % (self.app_name,))
 
             # Load Policy if exists
