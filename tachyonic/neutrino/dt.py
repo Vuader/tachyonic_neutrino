@@ -35,6 +35,7 @@ from tzlocal import get_localzone
 
 log = logging.getLogger(__name__)
 
+
 def utc_time(py_datetime_obj=None, source_tz=None):
     if py_datetime_obj is None:
         local_system_utc = datetime.datetime.utcnow()
@@ -47,6 +48,7 @@ def utc_time(py_datetime_obj=None, source_tz=None):
         utc = pytz.timezone('UTC')
         return py_datetime_obj.astimezone(utc)
 
+
 def from_utc(utc_time, destination=None):
     if destination is None:
         tz = get_localzone()
@@ -55,8 +57,10 @@ def from_utc(utc_time, destination=None):
 
     return utc_time.astimezone(tz)
 
+
 def timezones():
     return pytz.all_timezones
+
 
 class Datetime(object):
     def __init__(self):
