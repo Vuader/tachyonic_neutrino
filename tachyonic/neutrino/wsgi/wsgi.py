@@ -131,7 +131,6 @@ class Wsgi(Base, Error):
             req.context['datetime'] = dt
             self.jinja.globals['DATETIME'] = dt
 
-            returned = None
             try:
                 if r is not None:
                     obj, methods, obj_kwargs, route, name = r
@@ -172,9 +171,6 @@ class Wsgi(Base, Error):
                 trace = str(traceback.format_exc())
                 log.error("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
-
-            # Content Length Header
-            resp.headers['Content-Length'] = str(resp.content_length)
 
             # Send status and headers to the server using the supplied function
             start_response(resp.status, resp.wsgi_headers())

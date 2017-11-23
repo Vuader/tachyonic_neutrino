@@ -31,12 +31,8 @@ import logging
 import cgi
 import datetime
 import json
-try:
-    from urllib import parse as urlparse
-    from urllib.parse import quote
-except ImportError:
-    import urlparse
-    from urllib import quote
+from urllib import parse as urlparse
+from urllib.parse import quote
 
 from tachyonic.neutrino.wsgi.headers import Headers
 from tachyonic.neutrino.wsgi.cookies import Cookies
