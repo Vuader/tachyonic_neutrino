@@ -36,38 +36,42 @@ from tachyonic.neutrino.validate import is_socket
 from tachyonic.neutrino.threadlist import ThreadList
 
 class Logger(object):
-    class _Extra(logging.Filter):
-        def __init__(self, get_extra):
-            logging.Filter.__init__(self)
-            self._get_extra = get_extra
+    """Logger
 
-        def filter(self, record):
-            record.extra = self._get_extra()
-            return True
-
-    def set_extra(self, value):
-        self._request.clear()
-        self._request.append(value)
-
-    def append_extra(self, value):
-        self._request.append(value)
-
-    def _get_extra(self):
-        return " ".join(self._request)
+    This class is the used to facilitate python logging facilities.
+    """
+    def __new__(cls):
+        # Please keep singleton for future use. (christiaan.rademan@gmail.com)
+        if not hasattr(cls, '_instance'):
+            cls._instance = super(Logger, cls).__new__(cls)
+        return cls._instance
 
     def __init__(self):
-        self._request = ThreadList()
-        self.log = logging.getLogger()
-        self.log.setLevel(logging.DEBUG)
-        self.stdout = logging.StreamHandler()
-        self.log.addHandler(self.stdout)
-        log_format = logging.Formatter('%(asctime)s ' + '%(name)s[' +
-                                       str(os.getpid()) +
-                                       '] <%(levelname)s>: %(message)s', datefmt='%b %d %H:%M:%S')
-        self.stdout.formatter = log_format
+        if not hasattr(self, '_init'):
+            self._init = True
+            self._request = ThreadList()
+            self.log = logging.getLogger()
+            self.log.setLevel(logging.DEBUG)
+            self.stdout = logging.StreamHandler()
+            self.log.addHandler(self.stdout)
+            log_format = logging.Formatter('%(asctime)s ' + '%(name)s[' +
+                                           str(os.getpid()) +
+                                           '] <%(levelname)s>: %(message)s', datefmt='%b %d %H:%M:%S')
+            self.stdout.formatter = log_format
 
     def load(self, app_name='Neutrino', log_file=None, syslog_host='localhost',
              syslog_port=514, debug=False):
+        """ Load / Configure Logging Facilities.
+
+        Initially this method is used to configure logging facilities.
+
+        Args:
+            app_name (str): Application Name.
+            log_file (str): Path to log file (default: None).
+            syslog_host (str): IP or hostname of syslog server.
+            syslog_port (int): Syslog Server Port (default: 514).
+            debug (bool): Log all output or only warning, error and criticial.
+        """
 
         if debug is True:
             self.log.setLevel(logging.DEBUG)
@@ -98,3 +102,37 @@ class Logger(object):
         for handler in logging.root.handlers:
             handler.addFilter(self._Extra(self._get_extra))
             handler.formatter = log_format
+
+    class _Extra(logging.Filter):
+        def __init__(self, get_extra):
+            logging.Filter.__init__(self)
+            self._get_extra = get_extra
+
+        def filter(self, record):
+            record.extra = self._get_extra()
+            return True
+
+    def _get_extra(self):
+        return " ".join(self._request)
+
+    def set_extra(self, value):
+        """ Set Extra Logging Values.
+
+        Set clears exisiting additional text to be appended to log messages and
+        set adds new value.
+
+        Args:
+            value (str): Additional text to be appended to log message.
+        """
+        self._request.clear()
+        self._request.append(value)
+
+    def append_extra(self, value):
+        """ Append Extra Logging Values.
+
+        Append additional text to log messages.
+
+        Args:
+            value (str): Additional text to be appended to log message.
+        """
+        self._request.append(value)
