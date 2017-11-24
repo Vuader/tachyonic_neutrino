@@ -33,6 +33,13 @@ log = logging.getLogger(__name__)
 
 
 class Headers(object):
+    """ WSGI Headers.
+
+    Behaveas like a dictionary storing HTTP headers.
+
+    Args:
+        wsgi_environ: Loads WSGI Environment headers.
+    """
     def __init__(self, wsgi_environ=None):
         self._data = {}
         if wsgi_environ is not None:
@@ -93,3 +100,20 @@ class Headers(object):
             return str(self._data[key])
         except KeyError:
             return default
+
+    def wsgi_headers(self):
+        """Return headers for WSGI
+
+        HTTP headers expected by the client
+        They must be wrapped as a list of tupled pairs:
+            [(Header name, Header value)].
+        """
+
+        headers = []
+
+        for header in self:                                                 
+            value = self[header]
+            h = (header, value)
+            headers.append(h)
+
+        return headers
