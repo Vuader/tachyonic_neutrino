@@ -392,20 +392,13 @@ class Response(object):
             [(Header name, Header value)].
         """
 
-        response_headers = []
-
-        for header in self.headers:
-            value = self.headers[header]
-            h = (header, value)
-            response_headers.append(h)
-
-        return response_headers + self._req.cookies.wsgi_headers()
+        return self.headers.wsgi_headers() + self._req.cookies.wsgi_headers()
 
 
 def response_io_stream(f, chunk_size=None):
     '''
     Response payload iterable object.
-    
+
     response_io_stream should only be used in situations where it is absolutely
     required that the whole content isn’t iterated before transferring the data
     to the client. Content-Length headers can’t be generated for streaming
