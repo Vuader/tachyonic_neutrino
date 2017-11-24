@@ -106,7 +106,7 @@ class Base(object):
             log_config = self.config.get('logging')
             self.logger.load(app_name=self.app_name,
                              syslog_host=log_config.get('host', None),
-                             syslog_port=log_config.get('port', 514),
+                             syslog_port=log_config.get_int('port', 514),
                              debug=self.debug,
                              log_file=log_config.get('file', None))
 
