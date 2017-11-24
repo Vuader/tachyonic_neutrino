@@ -35,6 +35,13 @@ import logging
 log = logging.getLogger(__name__)
 
 def is_socket(socket):
+    """Is Unix socket
+
+    Returns Bool wether file is unix socket.
+
+    Args:
+        socket (str): Socket path.
+    """
     try:
         mode = os.stat(socket).st_mode
         is_socket = stat.S_ISSOCK(mode)
@@ -42,41 +49,61 @@ def is_socket(socket):
         is_socket = False
     return is_socket
 
+def is_text(text):
+    """Is Text?
 
-def is_text(s):
-    if isinstance(s, str):
-        if is_binary(s):
+    Returns Bool wether text.
+
+    Args:
+        text (str/bytes): Socket path.
+    """
+    if isinstance(text, str):
+            return True
+    elif isinstance(text, bytes):
+        if is_binary(text):
             return False
         else:
             return True
     else:
         return False
 
+def is_binary(data):
+    """Is Binary?
 
-def is_binary(s):
-    if isinstance(s, str) or isinstance(s, bytes):
+    Returns Bool wether binary.
+
+    Args:
+        data (str/bytes): Possible binary or string.
+    """
+    if isinstance(data, str):
+        return False
+    elif isinstance(data, bytes):
         try:
-            if s == '':
-                return False
             # if s contains any null, it's not text:
-            if "\0" in s:
+            if "\0" in data:
                 return True
             # an "empty" string is "text" (arbitrary but reasonable choice):
-            if not s:
+            # decode byte string from utf-8 to string.
+            if not data or data.decode('utf-8') == '':
                 return False
         except UnicodeDecodeError:
+            # UnicodeDecodError means binary...
             return True
     else:
         return False
 
 def is_byte_string(string):
-    if sys.version_info[0] == 2:
-        if isinstance(string, str):
-            return True
-        else:
+    """Is Bytes String?
+
+    Returns Bool wether Bytes String?
+
+    Args:
+        string (bytes): Possible binary or string.
+    """
+    if isinstance(string, bytes):
+        if is_binary(string):
             return False
+        else:
+            return True
     else:
-        if isinstance(string, bytes):
-            return True
-        else:
-            return False
+        return False
