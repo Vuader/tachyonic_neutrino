@@ -32,11 +32,37 @@ import passlib.hash
 import passlib.context
 
 from tachyonic.neutrino import constants as const
+from tachyonic.neutrino.exceptions import Error
 
 log = logging.getLogger(__name__)
 
 
 def hash(password, algo=const.BLOWFISH, rounds=15):
+    """Hash Password.
+
+    Provide a simple interface for hashing passwords using specified algorithm
+    and rounds.
+
+    Args:
+        password (str): Clear Text Password
+        algo (str): algorithm (defined in tachyonic.neutrino.constants)
+            * CLEARTEXT
+            * BLOWFISH
+            * SHA256
+            * SHA512
+            * LDAP_MD5
+            * LDAP_SMD5
+            * LDAP_SHA1
+            * LDAP_SSHA1
+            * LDAP_CLEARTEXT
+            * LDAP_BLOWFISH
+            * LDAP_SHA256
+            * LDAP_SHA512
+        rounds (int): Hashing rounds...
+
+    Returns hashed value of password.
+    """
+
     if (rounds < 1000 and
             (algo == const.SHA256 or
              algo == const.SHA512 or
@@ -69,20 +95,25 @@ def hash(password, algo=const.BLOWFISH, rounds=15):
     elif algo == const.LDAP_SHA512:
         hashed = passlib.hash.ldap_sha512_crypt.encrypt(password, rounds=rounds)
     else:
-        pass
+        raise Error('Invalid hash specified %s' % algo)
     return hashed
 
+def valid(password, hashed):
+    """ Validate password against hash.
 
-def valid(password, hashed, plaintext=False):
+    Args:
+        password (str): Clear Text Password
+        hashed (str): Hashed value of Password
+        plaintext (bool): Wether plaintext or not.
+
+    Return bool wether password matches.
+    """
     pwd_context = passlib.context.CryptContext(schemes=["md5_crypt", "bcrypt", "sha256_crypt", "sha512_crypt",
                                                         "ldap_md5", "ldap_salted_md5", "ldap_sha1", "ldap_salted_sha1",
                                                         "ldap_bcrypt", "ldap_sha256_crypt", "ldap_sha512_crypt"])
 
-    if plaintext is True:
-        if password == hashed:
-            return True
-        else:
-            return False
+    if password == hashed:
+        return True
     else:
         if pwd_context.verify(password, hashed):
             return True
