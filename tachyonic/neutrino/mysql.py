@@ -43,7 +43,7 @@ import pymysql.cursors as cursors
 import tachyonic as root
 
 from tachyonic.neutrino.shrek import Shrek
-from tachyonic.neutrino.timer import timer as nfw_timer
+from tachyonic.neutrino.timer import timer
 from tachyonic.neutrino.strings import filter_none_text
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.dt import utc_time
@@ -146,36 +146,36 @@ def Mysql(name='default', host=None, username=None,
 
 
 def connect(host, username, password, database):
-    if debug is True:
-        timer = nfw_timer()
-        log.debug("Connecting Database Connection" +
-                  " (server=%s,username=%s,database=%s)" %
-                  (host, username,
-                   database))
+    with timer() as elapsed:
+        if debug is True:
+            log.debug("Connecting Database Connection" +
+                      " (server=%s,username=%s,database=%s)" %
+                      (host, username,
+                       database))
 
-    conn = MySQLdb.connect(host=host,
-                           user=username,
-                           passwd=password,
-                           db=database,
-                           use_unicode=True,
-                           charset='utf8',
-                           autocommit=False)
-    if debug is True:
-        timer = nfw_timer(timer)
-        log.debug("Connected Database Connection" +
-                  " (server=%s,username=%s,database=%s,%s,%s,%s)" %
-                  (host,
-                   username,
-                   database,
-                   conn.get_server_info(),
-                   conn.get_host_info(),
-                   conn.thread_id) +
-                  " (DURATION: %s)" % (timer))
-    return conn
+        conn = MySQLdb.connect(host=host,
+                               user=username,
+                               passwd=password,
+                               db=database,
+                               use_unicode=True,
+                               charset='utf8',
+                               autocommit=False)
+        if debug is True:
+            log.debug("Connected Database Connection" +
+                      " (server=%s,username=%s,database=%s,%s,%s,%s)" %
+                      (host,
+                       username,
+                       database,
+                       conn.get_server_info(),
+                       conn.get_host_info(),
+                       conn.thread_id) +
+                      " (DURATION: %s)" % (elapsed()))
+        return conn
 
 
 def _log_query(query=None, params=None):
     parsed = []
+
     if params is not None:
         for param in params:
             if isinstance(param, int) or isinstance(param, float):
@@ -212,74 +212,64 @@ def _parsed_results(results):
 
 
 def execute(cursor, query=None, params=None):
-    if debug is True:
-        timer = nfw_timer()
+    with timer() as elapsed:
+        log_query = _log_query(query, params)
+        parsed = _parsed_params(params)
 
-    log_query = _log_query(query, params)
-    parsed = _parsed_params(params)
+        try:
+            cursor.execute(query, parsed)
+        except MySQLdb.IntegrityError as e:
+            code, value = e
+            log.error("Query %s" % (log_query))
+            raise MySQLdb.IntegrityError(code, value)
 
-    try:
-        cursor.execute(query, parsed)
-    except MySQLdb.IntegrityError as e:
-        code, value = e
-        log.error("Query %s" % (log_query))
-        raise MySQLdb.IntegrityError(code, value)
+        result = cursor.fetchall()
 
-    result = cursor.fetchall()
+        if debug is True:
+            if elapsed() > 0.1:
+                log.debug("!SLOW! Query %s (DURATION: %s)" % (log_query,
+                                                              elapsed()))
+            else:
+                log.debug("Query %s (DURATION: %s)" % (log_query, elapsed()))
 
-    if debug is True:
-        timer = nfw_timer(timer)
-        if timer > 0.1:
-            log.debug("!SLOW! Query %s (DURATION: %s)" % (log_query, timer))
-        else:
-            log.debug("Query %s (DURATION: %s)" % (log_query, timer))
-
-    return _parsed_results(result)
-
+        return _parsed_results(result)
 
 def commit(db):
-    if debug is True:
-        timer = nfw_timer()
+    with timer() as elapsed:
+        db.commit()
 
-    db.commit()
-
-    if debug is True:
-        timer = nfw_timer(timer)
-        if timer > 0.1:
-            log.debug("!SLOW! Commit" +
-                      " (%s,%s,%s) (DURATION: %s)" %
-                      (db.get_server_info(),
-                       db.get_host_info(),
-                       db.thread_id,
-                       timer))
-        else:
-            log.debug("Commit" +
-                      "(%s,%s,%s) (DURATION: %s)" %
-                      (db.get_server_info(),
-                       db.get_host_info(),
-                       db.thread_id,
-                       timer))
-
+        if debug is True:
+            if elapsed() > 0.1:
+                log.debug("!SLOW! Commit" +
+                          " (%s,%s,%s) (DURATION: %s)" %
+                          (db.get_server_info(),
+                           db.get_host_info(),
+                           db.thread_id,
+                           timer))
+            else:
+                log.debug("Commit" +
+                          "(%s,%s,%s) (DURATION: %s)" %
+                          (db.get_server_info(),
+                           db.get_host_info(),
+                           db.thread_id,
+                           timer))
 
 def rollback(db):
-    if debug is True:
-        timer = nfw_timer()
+    with timer() as elapsed:
+        db.rollback()
 
-    db.rollback()
-
-    if debug is True:
-        timer = nfw_timer(timer)
-        if timer > 0.1:
-            log.debug("!SLOW! Rollback" +
-                      " (%s,%s,%s) (DURATION: %s)" %
-                      (db.get_server_info(),
-                       db.get_host_info(),
-                       db.thread_id,
-                       timer))
-        else:
-            log.debug("Rollback" +
-                      " (%s,%s,%s) (DURATION: %s)" %
-                      (db.get_server_info(),
-                       db.get_host_info(),
-                       db.thread_id,
-                       timer))
+        if debug is True:
+            if elapsed() > 0.1:
+                log.debug("!SLOW! Rollback" +
+                          " (%s,%s,%s) (DURATION: %s)" %
+                          (db.get_server_info(),
+                           db.get_host_info(),
+                           db.thread_id,
+                           elapsed()))
+            else:
+                log.debug("Rollback" +
+                          " (%s,%s,%s) (DURATION: %s)" %
+                          (db.get_server_info(),
+                           db.get_host_info(),
+                           db.thread_id,
+                           elapsed()))
