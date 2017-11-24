@@ -35,7 +35,17 @@ log = logging.getLogger(__name__)
 
 
 def clean_url(url):
+    """Clean URL.
+
+    Replaces two or more / with one.
+
+    Args:
+        url (string): URL to parse.
+
+    Returns formatted url.
+    """
     parsed = list(urlparse.urlparse(url))
-    parsed[2] = re.sub("/{2,}", "/", parsed[2]) # replace two or more / with one
+    parsed[2] = re.sub("/{2,}", "/", parsed[2]).strip('/') # replace two or more / with one
     cleaned = urlparse.urlunparse(parsed)
+
     return cleaned
