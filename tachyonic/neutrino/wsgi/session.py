@@ -45,6 +45,19 @@ lock = threading.Lock()
 
 
 class SessionBase(object):
+    """ Session Base Class.
+
+    Neutrino provides full support for anonymous sessions. The session framework
+    lets you store and retrieve arbitrary data on a per-site-visitor basis. It
+    stores data on the server side and abstracts the sending and receiving of
+    cookies. Cookies contain a session ID – not the data itself (unless you’re
+    using the cookie based backend).
+
+    SessionBase A dictionary like object containing session data.
+
+    Args:
+        req (object): Request Object (tachyonic.neutrino.wsgi.request.Request)
+    """
     def __init__(self, request):
         self.req = request
         self._do_not_save = False
@@ -54,7 +67,6 @@ class SessionBase(object):
         self._cookie()
 
     def _cookie(self):
-        #name = if_unicode_to_utf8('tachyonic')
         name = 'tachyonic'
         self._expire = self.req.config.get('application').get_int('session_timeout',
                                                                   3600)
@@ -111,6 +123,13 @@ class SessionBase(object):
 
 
 class SessionRedis(SessionBase):
+    """ Session Redis Interface.
+
+    Used for storing session data in Redis. Helpful when running multiple
+    instances of tachyonic which requires a shared session state.
+
+    Please refer to SessionBase.
+    """
     def init(self):
         self._redis = redis()
 
@@ -135,6 +154,12 @@ class SessionRedis(SessionBase):
             pass
 
 class SessionFile(SessionBase):
+    """ Session Redis Interface.
+
+    Used for storing session data in flat files.
+
+    Please refer to SessionBase.
+    """
     def init(self):
         self._path = "%s/tmp/" % (self.req.app_root,)
 
