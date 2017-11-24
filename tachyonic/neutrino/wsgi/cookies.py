@@ -42,6 +42,21 @@ class Cookies(object):
         if 'HTTP_COOKIE' in req.environ:
             self.cookie.load(req.environ['HTTP_COOKIE'])
 
+    def __getitem__(self, name):
+        return self.get(name)
+
+    def __setitem__(self, name, value):
+        self.set(name, value)
+
+    def __contains__(self, cookie):
+        if cookie in self.cookie:
+            return True
+        else:
+            return False
+
+    def __iter__(self):
+        return iter(self.cookie)
+
     def get(self, name, default=None):
         if name in self.cookie:
             return if_unicode_to_utf8(self.cookie[name].value)
@@ -61,16 +76,15 @@ class Cookies(object):
         if expire is not None and expire != 0:
             self.cookie[name]['max-age'] = expire
 
-    def __contains__(self, cookie):
-        if cookie in self.cookie:
-            return True
-        else:
-            return False
+    def wsgi_headers(self):
+        """Return multiple cookie headers for WSGI
 
-    def headers(self):
+        HTTP headers expected by the client
+        They must be wrapped as a list of tupled pairs:
+            [(Header name, Header value)].
+        """
         h = []
         for cookie in self.cookie:
             h.append(('Set-Cookie',
                       self.cookie[cookie].OutputString()))
         return h
-

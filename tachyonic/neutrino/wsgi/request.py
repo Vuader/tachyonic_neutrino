@@ -34,6 +34,7 @@ import json
 from urllib import parse as urlparse
 from urllib.parse import quote
 
+from tachyonic.neutrino.exceptions import Error
 from tachyonic.neutrino.wsgi.headers import Headers
 from tachyonic.neutrino.wsgi.cookies import Cookies
 from tachyonic.neutrino.ids import random_id
@@ -41,11 +42,75 @@ from tachyonic.neutrino.wsgi.session import SessionFile
 from tachyonic.neutrino.wsgi.session import SessionRedis
 from tachyonic.neutrino.redissy import redis
 
-
 log = logging.getLogger(__name__)
 
-
 class Request(object):
+    """ WSGI Request
+
+    Neutrino uses request and response objects to pass state through the
+    system.
+
+    Then a page is requested, Neutrino creates an Request object that contains
+    metadata about the request. Then Neutrino loads the appropriate view,
+    passing the Request as the first argument to the middleware and view function.
+
+    Args:
+        environ (dict): dictionary containing CGI like environment
+            variables which is populated by the server for each received
+            request from the client.
+        app (object): neutrino wsgi object.
+
+    Attributes:
+        context (dict): per request context dictionary.
+        app_context (dict): per process application context.
+        config (object): Configuration, (neutrino.config.Config)
+        router (object): Router. (neutrino.wsgi.router.Router)
+        logger (object): Logging Facilitator. (neutrino.logger.Logger)
+        environ (dict): dictionary containing CGI like environment
+            variables which is populated by the server for each received
+            request from the client.
+        method (str): A  string representing the HTTP method used in the
+            request. This is guaranteed to be uppercase.
+        app (str): Application Entry Point.
+            Same as mod_wsgi WSGIScriptAlias or example /ui.
+        site (str): alias for app.
+        headers (dict): A dictionary containing all available HTTP headers.
+            Available headers depend on the client and server, but here are
+            some examples.
+            * CONTENT_LENGTH – The length of the request body (as a string).
+            * CONTENT_TYPE – The MIME type of the request body.
+            * HTTP_ACCEPT – Acceptable content types for the response.
+            * HTTP_ACCEPT_ENCODING – Acceptable encodings for the response.
+            * HTTP_ACCEPT_LANGUAGE – Acceptable languages for the response.
+            * HTTP_HOST – The HTTP Host header sent by the client.
+            * HTTP_REFERER – The referring page, if any.
+            * HTTP_USER_AGENT – The client’s user-agent string.
+            * QUERY_STRING – The query string, as a single (unparsed) string.
+            * REMOTE_ADDR – The IP address of the client.
+            * REMOTE_HOST – The hostname of the client.
+            * REMOTE_USER – The user authenticated by the Web server, if any.
+            * REQUEST_METHOD – A string such as "GET" or "POST".
+            * SERVER_NAME – The hostname of the server.
+            * SERVER_PORT – The port of the server (as a string).
+            Any HTTP headers in the request are converted
+            by settings all characters to uppercase, replacing any hyphens
+            with underscores.
+        cookies (object): A dictionary like object containing all cookies. Keys and values
+            are strings.
+        request_id (str): Unique Request ID.
+        app_root (str): Application root file path.
+        view (object): Current view method/function.
+        session (object): A dictionary like object containing session data.
+        content_length (int): The length of the request body in bytes.
+        cached (str): Client Last-Modified header will contain the date of
+            last modification. HTTP dates are always expressed in GMT,
+            never in local time.
+        query (object): A dictionary-like object containing all given HTTP
+            QUERY parameters. (tachyonic.neutrino.wsgi.request.Get)
+        post (object): A dictionary-like object containing all given HTTP POST
+            parameters, providing that the request contains form data.
+            (tachyonic.neutrino.wsgi.request.Post)
+    """
     def __init__(self, environ, app):
         super(Request, self).__setattr__('context', {})
         super(Request, self).__setattr__('app_context', app.context)
@@ -129,9 +194,16 @@ class Request(object):
                                  " attribute '%s'" % (name,))
 
     def json(self, size=0):
+        """Return JSON Object from request body"""
+
+        # JSON requires str not bytes hence decode.
         return json.loads(self.read().decode('utf-8'))
 
     def read(self, size=0):
+        """Read at most size bytes, returned as a bytes object.
+
+        Returns content of response body.
+        """
         if self._read_field is False:
             if self._input is not None:
                 self._read_file = True
@@ -143,6 +215,10 @@ class Request(object):
             raise Exception("'You cannot read from body after accessing post'")
 
     def readline(self, size=0):
+        """Next line from the file, as a bytes object.
+
+        Returns one line content of response body.
+        """
         if self._read_field is False:
             if self._input is not None:
                 self._read_file = True
@@ -154,9 +230,16 @@ class Request(object):
             raise Exception("'You cannot read from body after accessing post'")
 
     def get_host(self):
-        config = self.config
-        app_config = config.get('application')
-        use_x_forwarded_host = app_config.get('use_x_forwarded_host', False)
+        """ Returns the originating host.
+
+        Uusing information from the HTTP_X_FORWARDED_HOST (if
+        USE_X_FORWARDED_HOST is enabled) and HTTP_HOST headers, in that order.
+
+        Example: "www.example.com"
+        """
+        config = self.config.get('application')
+        use_x_forwarded_host = config.get('use_x_forwarded_host', False)
+
         if use_x_forwarded_host is True and 'X_FORWARDED_HOST' in self.headers:
             return self.headers['X_FORWARDED_HOST']
         elif 'SERVER_NAME' in self.environ:
@@ -164,9 +247,15 @@ class Request(object):
         elif 'SERVER_ADDR' in self.environ:
             return self.environ['SERVER_ADDR']
         else:
-            return '127.0.0.1'
+            raise Error('Server host not found')
 
     def get_port(self):
+        """Returns the originating port.
+
+        Using information from the HTTP_X_FORWARDED_PORT
+        (if USE_X_FORWARDED_PORT is enabled) and SERVER_PORT META variables, in
+        that order.
+        """
         config = self.config
         app_config = config.get('application')
         use_x_forwarded_port = app_config.get('use_x_forwarded_port', False)
@@ -174,102 +263,148 @@ class Request(object):
             return self.headers['X_FORWARDED_PORT']
         elif 'SERVER_PORT' in self.environ:
             return self.environ['SERVER_PORT']
+        else:
+            raise Error('Server port not found')
 
     def get_proto(self):
-        return self.environ['wsgi.url_scheme']
+        """Return the Protocol Scheme.
+
+        A string representing the scheme of the request (http or https
+        usually).
+        """
+        if 'wsgi.url_scheme' in self.environ:
+            return self.environ['wsgi.url_scheme'].upper()
+        else:
+            raise Error('URI scheme not found')
 
     def get_script(self):
+        """Return Application Entry point.
+
+        For example:
+            * WSGIScriptAlias as per mod_wsgi
+            * /ui
+        """
         if 'SCRIPT_NAME' in self.environ:
-            return self.environ['SCRIPT_NAME']
+            return '/' + self.environ['SCRIPT_NAME'].strip('/')
         else:
-            return None
+            raise Error('Application entry point not found')
+
 
     def get_app(self):
+        """Return Application Entry point.
+
+        For example:
+            * WSGIScriptAlias as per mod_wsgi
+            * /ui
+        """
         return self.get_script()
 
+    def get_resource(self):
+        """Returns the path exluding application entry point.
+
+        Example: "/music/bands/metallica"
+        """
+        if 'PATH_INFO' in self.environ:
+            url = quote(self.environ['PATH_INFO'])
+            url = url.strip('/')
+            if url != '':
+                url = '/' + url
+            return url
+        else:
+            raise Error('URL Resource path not found')
+
     def get_path(self):
+        """Returns the path.
+
+        Example: "/app/music/bands/metallica"
+        """
         url = quote(self.get_script())
         if 'PATH_INFO' in self.environ:
             url += quote(self.environ['PATH_INFO'])
         return url
 
-    def get_resource(self):
-        if 'PATH_INFO' in self.environ:
-            url = quote(self.environ['PATH_INFO'])
-            url = url.strip('/')
-            return '/' + url
-        else:
-            return '/'
 
     def get_full_path(self):
+        """Returns the path, plus an appended query string, if applicable.
+
+        Example: "/app/music/bands/metallica?print=true"
+        """
         url = self.get_path()
-        if 'QUERY_STRING' in self.environ:
+        if ('QUERY_STRING' in self.environ and
+                self.environ['QUERY_STRING'] != ''):
             url += '?' + self.environ['QUERY_STRING']
 
         return url
 
     def get_app_url(self):
-        url = self.get_proto()+'://'
+        """Returns the Appication URL form of location.
+
+        Example: "https://example.com/app"
+        """
+        url = self.get_proto().lower()+'://'
         url += self.get_host()
 
-        if self.get_proto() == 'https':
+        if self.get_proto() == 'HTTPS':
             if self.get_port() != '443':
                 url += ':' + self.get_port()
-        elif self.get_proto() == 'http':
+        elif self.get_proto() == 'HTTP':
             if self.get_port() != '80':
                 url += ':' + self.get_port()
-                pass
 
         url += quote(self.get_script())
         return url
 
     def get_app_static(self):
-        url = self.get_proto()+'://'
-        url += self.get_host()
+        """Returns the static content path.
 
-        if self.get_proto() == 'https':
-            if self.get_port() != '443':
-                url += ':' + self.get_port()
-        elif self.get_proto() == 'http':
-            if self.get_port() != '80':
-                url += ':' + self.get_port()
+        Example: "/static"
+        """
+        static = self.config.get("application").get("static", "static")
+        static = "/" + static.strip('/')
 
-        static = self.config.get("application").get("static", "/static")
-        url += static
-
-        return url
+        return static
 
     def get_url(self):
-        url = self.get_proto()+'://'
-        url += self.get_host()
+        """Returns the URL form of location.
 
-        if self.get_proto() == 'https':
-            if self.get_port() != '443':
-                url += ':' + self.get_port()
-        elif self.get_proto() == 'http':
-            if self.get_port() != '80':
-                url += ':' + self.get_port()
-
-        url += quote(self.get_script())
-        if 'PATH_INFO' in self.environ:
-            url += quote(self.environ['PATH_INFO'])
+        Example: "https://example.com/app/music/bands/metallica"
+        """
+        url = self.get_app_url()
+        url += quote(self.get_resource())
 
         return url
 
     def get_absolute_url(self):
-        url = self.get_url()
-        if 'QUERY_STRING' in self.environ:
+        """Returns the absolute URL form of location.
+
+        Example: "https://example.com/app/music/bands/metallica/?print=true"
+        """
+        url = self.get_app_url()
+        url += quote(self.get_resource())
+        if ('QUERY_STRING' in self.environ and
+                self.environ['QUERY_STRING'] != ''):
             url += '?' + self.environ['QUERY_STRING']
 
         return url
 
     def is_secure(self):
-        if self.get_proto() == 'https':
+        """Returns True if the request is secure.
+
+        Tthat is, if it was made with HTTPS.
+        """
+        if self.get_proto() == 'HTTPS':
             return True
         else:
             return False
 
     def is_ajax(self):
+        """Returns True if the request was made via an XMLHttpRequest.
+
+        Checking the HTTP_X_REQUESTED_WITH header for the string
+        'XMLHttpRequest'. Most modern JavaScript libraries send this header. If
+        you write your own XMLHttpRequest call (on the browser side), you’ll
+        have to set this header manually if you want is_ajax() to work.
+        """
         if ('X_REQUESTED_WITH' in self.headers and
                 'xmlhttprequest' in self.headers['X_REQUESTED_WITH'].lower()):
             return True
@@ -277,7 +412,10 @@ class Request(object):
             return False
 
     def is_mobile(self):
-        # HTTP_USER_AGENT
+        """Returns True if mobile client is used.
+
+        Checking the HTTP_USER_AGENT header for known mobile strings.
+        """
         agent = self.headers.get('user_agent', '').lower()
         if 'iphone' in agent:
             return True
@@ -287,7 +425,10 @@ class Request(object):
             return False
 
     def is_bot(self):
-        # HTTP_USER_AGENT
+        """Returns True if client is bot.
+
+        Checking the HTTP_USER_AGENT header for known bot strings.
+        """
         agent = self.headers.get('user_agent', '').lower()
         if 'google' in agent:
             return True
@@ -312,6 +453,12 @@ class Request(object):
 
 
 class Post(object):
+    """HTTP POST Data Object.
+
+    Dictionary-like class customized to deal with multiple values for the
+    same key. This is necessary because some HTML form elements, notably
+    <select multiple>, pass multiple values for the same key.
+    """
     def __init__(self, fp, environ):
         self.override = {}
         self._cgi = cgi.FieldStorage(fp=fp, environ=environ)
@@ -338,6 +485,13 @@ class Post(object):
         return iter(self._cgi)
 
     def getfile(self, k):
+        """Returns tuple with file data for the given key.
+
+        Return Tuple:
+            (str) File Name
+            (str) Mime Type
+            (bytes) Data
+        """
         if k in self._cgi:
             f = self._cgi[k]
             name = f.filename
@@ -350,6 +504,11 @@ class Post(object):
             return None
 
     def get(self, k, d=None):
+        """Returns the value for the given key.
+
+        If the key has more than one value, it returns values comma
+        seperated.
+        """
         if k in self.override:
             return self.override[k]
         try:
@@ -365,6 +524,12 @@ class Post(object):
             return None
 
     def getlist(self, k, d=None):
+        """Returns a list of the data with the requested key.
+
+        Returns an empty list if the key doesn’t exist and a default value
+        wasn’t provided. It’s guaranteed to return a list unless the default
+        value provided isn’t a list.
+        """
         try:
             if k in self._cgi:
                 return self._cgi.getlist(k)
@@ -378,6 +543,12 @@ class Post(object):
 
 
 class Get(object):
+    """URL Query Data Object.
+
+    Dictionary-like class customized to deal with multiple values for the
+    same key. This is necessary because some HTML form elements, notably
+    <select multiple>, pass multiple values for the same key.
+    """
     def __init__(self, environ):
         self._cgi = urlparse.parse_qs(environ['QUERY_STRING'])
 
@@ -394,6 +565,11 @@ class Get(object):
         return iter(self._cgi)
 
     def get(self, k, d=None):
+        """Returns the value for the given key.
+
+        If the key has more than one value, it returns values comma
+        seperated.
+        """
         try:
             if k in self._cgi:
                 val = ",".join(self._cgi.get(k))
@@ -407,6 +583,12 @@ class Get(object):
             return None
 
     def getlist(self, k, d=None):
+        """Returns a list of the data with the requested key.
+
+        Returns an empty list if the key doesn’t exist and a default value
+        wasn’t provided. It’s guaranteed to return a list unless the default
+        value provided isn’t a list.
+        """
         try:
             if k in self._cgi:
                 return self._cgi.get(k)
