@@ -58,6 +58,9 @@ class Request(object):
     included in the body of the request. Neutrino loads the appropriate view,
     passing the Request as the first argument to the middleware and view function.
 
+    The Request object also exposes a dict-like context property for passing
+    arbitrary data to hooks and middleware methods.
+
     Args:
         environ (dict): dictionary containing CGI like environment
             variables which is populated by the server for each received
