@@ -50,8 +50,12 @@ class Request(object):
     Neutrino uses request and response objects to pass state through the
     system.
 
-    Then a page is requested, Neutrino creates an Request object that contains
-    metadata about the request. Then Neutrino loads the appropriate view,
+    When a page is requested: Neutrino creates an Request object that contains
+    metadata about the request. The Request object represents the incoming HTTP
+    request. It exposes properties and methods for examining headers, query
+    string parameters, and other metadata associated with the request.
+    Request is a file-like stream object for reading any data that was
+    included in the body of the request. Neutrino loads the appropriate view,
     passing the Request as the first argument to the middleware and view function.
 
     Args:

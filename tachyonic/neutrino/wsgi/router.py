@@ -38,6 +38,20 @@ log = logging.getLogger(__name__)
 
 
 def view(uri, method, req, resp):
+    """Open view based on URL and Method
+
+    Args:
+        uri (str): URI of resource. (exclude application entry point)
+        method (str): HTTP Method. Use constants in
+            tachyonic.neutrion.constants.
+            * GET
+            * POST
+            * PUT
+            * PATCH
+            * DELETE
+        req (object): Request Object.
+        resp (object): Response Object.
+    """
     req.method = method
     method = method.upper()
     r = req.router._falcon[method].find(uri)
@@ -49,6 +63,11 @@ def view(uri, method, req, resp):
 
 
 class Router(object):
+    """ Simple Router Interface.
+
+    The router is used to index and return views based on url and method.
+    """
+
     def __init__(self):
         self._falcon = {}
         self._falcon['GET'] = CompiledRouter()
@@ -59,13 +78,61 @@ class Router(object):
         self.routes = []
 
     def view(self, uri, method, req, resp):
+        """Open view based on URL and Method
+
+        Args:
+            uri (str): URI of resource. (exclude application entry point)
+            method (str): HTTP Method. Use constants in
+                tachyonic.neutrion.constants.
+                * GET
+                * POST
+                * PUT
+                * PATCH
+                * DELETE
+            req (object): Request Object.
+            resp (object): Response Object.
+        """
         view(uri, method, req, resp)
 
     def route(self, req):
+        """Route based on Request Object.
+
+        Returns view based on url and method in request object.
+        """
         uri = req.environ['PATH_INFO'].strip('/')
         return self._falcon[req.method].find(uri)
 
     def add(self, methods, route, obj, name=None):
+        """Add route to view.
+
+        The route() method is used to associate a URI template with a resource.
+        Neutrino then maps incoming requests to resources based on these templates.
+
+        URI Template example: "/music/rock"
+
+        If the route’s template contains field expressions, any responder that
+        desires to receive requests for that route must accept arguments named
+        after the respective field names defined in the template.
+
+        A field expression consists of a bracketed field name.
+        For example, given the following template:
+            "/music/{genre}"
+
+        The view would look like:
+            def genre(self, req, resp, genre):
+
+        Args:
+            methods (list): List of Methods. Use constants in
+                tachyonic.neutrion.constants.
+                * GET
+                * POST
+                * PUT
+                * PATCH
+                * DELETE
+            route (str): Route resource. (URI Template)
+            obj (object): Actual view function or method.
+            name (str): Used to identify policy to apply.
+        """
         route = route.strip('/')
         self.routes.append((methods, route, obj, name))
         if not isinstance(methods, ( tuple, list)):
