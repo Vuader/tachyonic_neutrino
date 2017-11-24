@@ -27,21 +27,26 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import datetime
+from contextlib import contextmanager
+from timeit import default_timer
 
+@contextmanager
+def timer():
+    """Code Execution Timer.
 
-def timer(started=None, pretty=False):
-    if started is None:
-        return datetime.datetime.now()
-    else:
-        seconds = (datetime.datetime.now()-started).total_seconds()
-        if pretty is False:
-            if seconds > 0.0001:
-                return seconds
-            else:
-                return 0
-        else:
-            m, s = divmod(seconds, 60)
-            h, m = divmod(m, 60)
-            return "%d:%02d:%02d" % (h, m, s)
+    Wrap code in execution timer to see elasped time.
 
+    Example:
+        with timer() as elapsed:
+            time.sleep(1)
+            print(elapsed())
+            time.sleep(2)
+            print(elapsed())
+            time.sleep(3)
+        print(elapsed())
+    """
+    start = default_timer()
+    elapser = lambda: default_timer() - start
+    yield lambda: elapser()
+    end = default_timer()
+    elapser = lambda: end-start
