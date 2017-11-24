@@ -31,5 +31,13 @@ import random
 import string
 
 def random_id(length=8):
-    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+    """ Generate Random ID.
 
+    Random ID contains ascii letters and digitis.
+
+    Args:
+        length (int): Character length of id.
+
+    Returns random id string.
+    """
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
