@@ -31,10 +31,22 @@ import logging
 from http.cookies import SimpleCookie
 
 from tachyonic.neutrino.strings import if_unicode_to_utf8
+from tachyonic.neutrino.exceptions import DoesNotExist
 
 log = logging.getLogger(__name__)
 
 class Cookies(object):
+    """HTTP Cookies Interface.
+    
+    Provide a simple interface for creating, modifying, and rendering
+    individual HTTP cookies.
+
+    A dictionary like object containing all cookies. Keys and values are
+    strings.
+
+    Args:
+        req (object): Request Object (tachyonic.neutrino.wsgi.request.Request)
+    """
     def __init__(self, req):
         self.req = req
         self.cookie = SimpleCookie()
@@ -58,14 +70,30 @@ class Cookies(object):
         return iter(self.cookie)
 
     def get(self, name, default=None):
+        """Returns a cookie value for a cookie,
+
+        Args:
+            name (str): Cookie Name
+            default (str): Default Value
+        """
         if name in self.cookie:
             return if_unicode_to_utf8(self.cookie[name].value)
         else:
-            return default
+            if default is not None:
+                return default
+            else:
+                raise DoesNotExist('Cookie not found %s' % name)
 
-    def set(self, name, value, expire=3600):
-        host = self.req.get_host()
+    def set(self, name, value, max_age=3600):
+        """ Sets a cookie.
 
+        Args:
+            name (str): Cookie Name
+            value (str): Cookie Value
+            max_age (int): should be a number of seconds, or None (default) if
+                the cookie should last only as long as the client’s browser
+                session. Expires will be calculated.
+        """
         self.cookie[name] = value
 
         host = self.req.get_host()
@@ -73,8 +101,8 @@ class Cookies(object):
         if host is not None:
             self.cookie[name]['domain'] = host
 
-        if expire is not None and expire != 0:
-            self.cookie[name]['max-age'] = expire
+        if max_age is not None and max_age != 0:
+            self.cookie[name]['max-age'] = max_age
 
     def wsgi_headers(self):
         """Return multiple cookie headers for WSGI

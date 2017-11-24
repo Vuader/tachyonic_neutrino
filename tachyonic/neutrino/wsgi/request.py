@@ -95,8 +95,8 @@ class Request(object):
             Any HTTP headers in the request are converted
             by settings all characters to uppercase, replacing any hyphens
             with underscores.
-        cookies (object): A dictionary like object containing all cookies. Keys and values
-            are strings.
+        cookies (object): A dictionary like object containing all cookies.
+            Keys and values are strings.
         request_id (str): Unique Request ID.
         app_root (str): Application root file path.
         view (object): Current view method/function.
