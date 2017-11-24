@@ -243,7 +243,10 @@ class Response(object):
     view, passing the Response as the second argument to the middleware and
     view function.
 
-    Response object can be used to set headers, response body and more.
+    The Response object represents the application’s HTTP response to the
+    request. It provides properties and methods for setting status, header
+    and body data. The Response object also exposes a dict-like context
+    property for passing arbitrary data to hooks and middleware methods.
 
     Args:
         req (Request): Request Object.
