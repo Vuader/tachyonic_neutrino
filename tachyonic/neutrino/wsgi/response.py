@@ -240,7 +240,8 @@ class Response(object):
 
     When a page is requested, Neutrino creates an Response object that
     used to form the response. Then Neutrino loads the appropriate
-    middleware and view, passing the Response as the second argument.
+    view, passing the Response as the second argument to the middleware and
+    view function.
 
     Response object can be used to set headers, response body and more.
 
@@ -398,7 +399,7 @@ class Response(object):
             h = (header, value)
             response_headers.append(h)
 
-        return response_headers + self._req.cookies.headers()
+        return response_headers + self._req.cookies.wsgi_headers()
 
 
 def response_io_stream(f, chunk_size=None):
