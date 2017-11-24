@@ -33,6 +33,14 @@ from tachyonic.neutrino.validate import is_text
 
 
 def filter_none_text(string):
+    """Parse String and filter Binary
+
+    If Bytes does not contain string then return 'BINARY'
+    else original string will be returned.
+
+    Args:
+        string (bytes): Bytes String
+    """
     if string is not None:
         if is_text(string):
             return string
@@ -42,6 +50,11 @@ def filter_none_text(string):
         return ''
 
 def if_unicode_to_utf8(string):
+    """Encode if Unicode to Bytes UTF8.
+
+    Args:
+        string (bytes): Bytes String
+    """
     if isinstance(string, str):
         return string.encode('utf-8')
     else:
