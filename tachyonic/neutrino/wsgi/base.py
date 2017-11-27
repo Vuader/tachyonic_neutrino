@@ -48,7 +48,6 @@ from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino.wsgi.router import Router
 from tachyonic.neutrino.wsgi.request import Request
 from tachyonic.neutrino.wsgi.response import Response
-from tachyonic.neutrino.mysql import Mysql
 from tachyonic.neutrino.redissy import redis
 from tachyonic.neutrino.web.dom import Dom
 from tachyonic.neutrino.policy import Policy
