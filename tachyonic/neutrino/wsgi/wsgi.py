@@ -132,6 +132,7 @@ class Wsgi(Base, Error):
             dt = Datetime()
             req.context['datetime'] = dt
             self.jinja.globals['DATETIME'] = dt
+            returned = None
 
             try:
                 if r is not None:
@@ -184,8 +185,8 @@ class Wsgi(Base, Error):
             req.session.save()
 
             # Return Body
-            if (not isinstance(returned, (str, bytes))
-                    and returned is not None):
+            if (returned is not None and
+                    not isinstance(returned, (str, bytes))):
                 # Return iterable object - from view.
                 return returned
             else:
