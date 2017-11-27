@@ -42,31 +42,56 @@ from tachyonic.neutrino.threaddict import ThreadDict
 log = logging.getLogger(__name__)
 
 class GetTemplateWrapper(object):
+    """Wrapper for Jinja2 loaded template.
+    """
     def __init__(self, template, request):
         self._request = request
         self._template = template
 
     def render(self, **kwargs):
+        """Renders this template with a given kwargs as context.
+
+        If kwargs isn’t provided, the engine will render the template with an
+        empty context.
+        """
         for r in self._request:
             kwargs[r] = self._request[r]
         return self._template.render(**kwargs)
 
 
 class Jinja(object):
+    """Neutrino being a web framework, we need a convenient way to generate
+    HTML dynamically. The most common approach relies on templates. A template
+    contains the static parts of the desired HTML output as well as some
+    special syntax describing how dynamic content will be inserted.
+    """
     def __init__(self):
         self._request = ThreadDict()
         self._loader = JinjaLoader()
         self._jinja = Environment(loader=self._loader)
 
     def clean_up(self):
+        """Clear global context related to request.
+        """
         self._request.clear()
 
     def get_template(self, *args, **kwargs):
+        """This method loads the template with the given name and returns a
+        GetTemplateWrapper object.
+        """
         t = self._jinja.get_template(*args, **kwargs)
         w = GetTemplateWrapper(t, self._request)
         return w
 
     def render_template(self, template, **kwargs):
+        """Renders this template with a given kwargs as context.
+
+        If kwargs isn’t provided, the engine will render the template with an
+        empty context.
+
+        Conveniance method so no need to use get_template() method and use
+        render() method on Template Object.
+        """
         t = self.get_template(template)
         return t.render(**kwargs)
 
@@ -84,16 +109,30 @@ class Jinja(object):
 
 
 class JinjaLoader(BaseLoader):
-    def load_templates(self, config, root_path):
-        self.searchpath = "%s/templates" % (root_path,)
+    """Jinja class for loading templates.
+    """
+    def load_templates(self, modules, override_path):
+        """Load Templates Jinja2 Templates
+
+        Initialize loading for Jinja2 Templates.
+
+        Please note: Can only be performed after modules import.
+            * If done before you get poorly handled error messages.
+            * Because jinja also trieds to import above moodules.
+            * When import fails at this point error is handled differently.
+
+        Args:
+            modules (list): List of python packages that could contain
+                templates for use.
+            override_path (str): Path locating overriding templates.
+        """
+        self.searchpath = "%s/templates" % (override_path,)
         try:
             self.fsl = loaders.FileSystemLoader(self.searchpath)
         except Exception as e:
             log.error(e)
 
-        self.config = config
-        self.app_config = self.config.get('application')
-        self.modules = self.app_config.get_items('modules')
+        self.modules = modules
         self.packages = {}
         self.encoding = 'utf-8'
         self.package_path = "templates"
@@ -108,6 +147,11 @@ class JinjaLoader(BaseLoader):
                 log.error("Can't import module %s\n%s" % (str(e), trace))
 
     def get_source(self, environment, template):
+        """Get raw template for environment.
+
+        First attempts to load overriding template then uses template within
+        specified package. For example "package/template.html"
+        """
         pieces = loaders.split_template_path(template)
         try:
             return self.fsl.get_source(environment, template)
@@ -139,10 +183,22 @@ class JinjaLoader(BaseLoader):
         return source.decode(self.encoding), filename, uptodate
 
     def list_overrides(self):
+        """Returns a list of overiding templates for this environment.
+
+        Overiding templates are located within wsgi application installation
+        path in templates.
+
+        Templates to override are located in package/templates path structure.
+        For example /var/www/ui/templates/template.html
+        """
         fsl = self.fsl.list_templates()
         return fsl
 
     def list_templates(self):
+        """Returns a list of templates for this environment.
+
+        Templates are located within the python package source.
+        """
         path = self.package_path
         if path[:2] == './':
             path = path[2:]

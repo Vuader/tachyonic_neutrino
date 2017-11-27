@@ -37,4 +37,16 @@ log = logging.getLogger(__name__)
 shrek = Shrek('redis', rd.StrictRedis)
 
 def redis(name='default', host='127.0.0.1', port=6379, db=0):
+    """Simple Redis Interface.
+
+    Uses Neutrino Shrek for pooling redis sessions on per thread basis.
+
+    Args:
+        name (str): Unique redis thread for specific session.
+        host (str): Redis Server host/ip.
+        port (int): Redis Server Port number.
+        db (int): Redis Database number.
+
+    Returns StrictRedis object from pool.
+    """
     return shrek.get(name, host, port, db)
