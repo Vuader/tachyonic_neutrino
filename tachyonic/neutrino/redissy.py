@@ -35,7 +35,7 @@ from tachyonic.neutrino.shrek import Shrek
 log = logging.getLogger(__name__)
 
 # Create pooling group for StrictRedis  using Shrek
-shrek = Shrek('redis', rd.StrictRedis)
+shrek = Shrek(rd.StrictRedis)
 
 def redis(name='default', host='127.0.0.1', port=6379, db=0):
     """Simple Redis Interface.
