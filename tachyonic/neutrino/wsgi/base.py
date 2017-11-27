@@ -135,7 +135,7 @@ class Base(object):
             # Load Jinja Templates - Can only be performed after module import.
             # If done before you get poorly handled error messages.
             # Because jinja also trieds to import above moodules.
-            self.jinja.load_templates(self.config, app_root)
+            self.jinja.load_templates(modules, "%s/templates" % app_root)
 
             # Load Middleware - at this point modules should
             # already be imported.

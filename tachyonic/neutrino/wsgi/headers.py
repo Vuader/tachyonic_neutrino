@@ -35,7 +35,7 @@ log = logging.getLogger(__name__)
 class Headers(object):
     """ WSGI Headers.
 
-    Behaveas like a dictionary storing HTTP headers.
+    Behaves like a dictionary storing HTTP headers.
 
     Args:
         wsgi_environ: Loads WSGI Environment headers.
