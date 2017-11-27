@@ -225,13 +225,13 @@ def Mysql(name='default', host=None, username=None,
 
     Returns connection object.
     """
-    db = shrek.get(name, host=host,
-                   username=username, password=password,
-                   database=database, debug=debug)
+    mysql_wrapper = shrek.get(name, host=host,
+                              username=username, password=password,
+                              database=database, debug=debug)
 
-    db.ping()
+    mysql_wrapper.ping()
 
-    return db
+    return mysql_wrapper
 
 def _connect(host, username, password, database, debug=False):
     """Connection objects are returned by the connect() function.
