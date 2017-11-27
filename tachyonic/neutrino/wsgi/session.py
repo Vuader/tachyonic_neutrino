@@ -154,7 +154,7 @@ class SessionRedis(SessionBase):
             pass
 
 class SessionFile(SessionBase):
-    """ Session Redis Interface.
+    """ Session File Interface.
 
     Used for storing session data in flat files.
 
