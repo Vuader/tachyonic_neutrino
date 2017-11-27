@@ -208,7 +208,7 @@ class MysqlWrapper(object):
 
 
 # Create pooling group for MysqlWrapper using Shrek
-shrek = Shrek('mysql', MysqlWrapper)
+shrek = Shrek(MysqlWrapper)
 
 def Mysql(name='default', host=None, username=None,
           password=None, database=None, debug=False):
