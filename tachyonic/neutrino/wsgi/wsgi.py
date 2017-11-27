@@ -94,7 +94,9 @@ class Wsgi(Base, Error):
             # MYSQL Application Database
             mysql_config = self.config.get('mysql')
             if mysql_config.get('database') is not None:
-                Mysql(**mysql_config.dict())
+                mysql_params = mysql_config.dict()
+                mysql_params['debug'] = self.debug
+                Mysql(**mysql_params)
 
             # Redis
             redis_config = self.config.get('redis')

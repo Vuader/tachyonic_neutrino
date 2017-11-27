@@ -34,6 +34,7 @@ from tachyonic.neutrino.shrek import Shrek
 
 log = logging.getLogger(__name__)
 
+# Create pooling group for StrictRedis  using Shrek
 shrek = Shrek('redis', rd.StrictRedis)
 
 def redis(name='default', host='127.0.0.1', port=6379, db=0):
@@ -42,7 +43,7 @@ def redis(name='default', host='127.0.0.1', port=6379, db=0):
     Uses Neutrino Shrek for pooling redis sessions on per thread basis.
 
     Args:
-        name (str): Unique redis thread for specific session.
+        name (str): Unique redis thread for specific pool/session.
         host (str): Redis Server host/ip.
         port (int): Redis Server Port number.
         db (int): Redis Database number.
