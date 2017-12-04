@@ -37,38 +37,96 @@ log = logging.getLogger(__name__)
 
 
 def utc_time(py_datetime_obj=None, source_tz=None):
+    """Return UTC DataTime.
+
+    Return UTC timezone from specified source timezone.
+
+    Args:
+        py_datetime_obj (datatime.datatime): DataTime Object (defaults to now)
+        source_tz (str): Source Timezone (defaults to host)
+
+    Returns datetime.datetime object.
+    """
     if py_datetime_obj is None:
-        local_system_utc = datetime.datetime.utcnow()
-        return pytz.utc.localize(local_system_utc)
-    else:
-        if source_tz is None:
-            source_tz = str(get_localzone())
+        py_datetime_obj = datetime.datetime.now()
 
-        py_datetime_obj = pytz.timezone(source_tz).localize(py_datetime_obj)
-        utc = pytz.timezone('UTC')
-        return py_datetime_obj.astimezone(utc)
+    if source_tz is None:
+        source_tz = str(get_localzone())
 
+    py_datetime_obj = pytz.timezone(source_tz).localize(py_datetime_obj)
+    utc = pytz.timezone('UTC')
 
-def from_utc(utc_time, destination=None):
-    if destination is None:
+    return py_datetime_obj.astimezone(utc)
+
+def from_utc(utc_time, destination_tz=None):
+    """Return Destination DataTime from UTC.
+
+    Args:
+        utc_time (datetime.datetime): Datetime Object
+        destination_tz (str): Destination Timezone (defaults to host)
+
+    Returns datetime.datetime object.
+    """
+    if destination_tz is None:
         tz = get_localzone()
     else:
-        tz = pytz.timezone(destination)
+        tz = pytz.timezone(destination_tz)
 
     return utc_time.astimezone(tz)
 
-
 def timezones():
+    """Return list all timezones.
+    """
     return pytz.all_timezones
 
 
 class Datetime(object):
+    """ Provide simple Datetime Interface.
+
+    UTC is the time standard commonly used across the world. The world's timing
+    centers have agreed to keep their time scales closely synchronized - or
+    coordinated - therefore the name Coordinated Universal Time.
+
+    All HTTP date/time stamps MUST be represented in Greenwich Mean Time (GMT),
+    without exception. For the purposes of HTTP, GMT is exactly equal to UTC
+    (Coordinated Universal Time). This is indicated in the first two formats by
+    the inclusion of "GMT" as the three-letter abbreviation for time zone, and
+    MUST be assumed when reading the asctime format. HTTP-date is case sensitive
+    and MUST NOT include additional LWS beyond that specifically included as SP
+    in the grammer.
+
+    Its good practice to use only one timezone within an application. Using
+    different timezones and standards can result in confusion.
+
+    Tachyonic, mysql api interface will set timezone to +00:00 GMT/UTC for
+    sql server functions to store current time such as now().
+
+    However when the time is returned from using mysql api in a result it will
+    be converted to UTC time function.
+
+    IMPORTANT: Mysql / Mariadb do not store timezone related information
+        in datetime fields.
+
+    Attributes:
+        now (datetime.datetime): Current local time in UTC. (readonly)
+        local (datetime.datetime). Current local time in local zone. (readonly)
+        tz (str): Local Timezone. (read & write)
+        timezones (list): List of timezones for tz attribute. (readonly)
+    """
+    def __new__(cls):
+        # Please keep singleton for global TZ. (christiaan.rademan@gmail.com)
+        if not hasattr(cls, '_instance'):
+            cls._instance = super(Datetime, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self):
-        self.tz = None
+        if not hasattr(self, '_init'):
+            self.tz = get_localzone()
+            self._init = True
 
     def __getattr__(self, name):
         if name == 'now':
-            return utc_time()
+            return utc_time(source_tz=self.tz)
         elif name == "local":
             return from_utc(utc_time(), self.tz)
         elif name == "timezones":
@@ -78,9 +136,83 @@ class Datetime(object):
 
     def __setattr__(self, name, value):
         if name == 'tz':
-            if value is None:
-                super(Datetime, self).__setattr__('tz', None)
-            elif value in timezones():
-                super(Datetime, self).__setattr__('tz', value)
+            if str(value) in timezones():
+                super(Datetime, self).__setattr__('tz', str(value))
             else:
                 raise AttributeError("Unknown Timezone %s" % value)
+        elif name == "_init":
+                super(Datetime, self).__setattr__('_init', True)
+        else:
+            raise AttributeError("Unknown Attribute %s on tachyoniuc.dt.datetime"
+                                 % name)
+
+    def from_utc(self, destination_tz=None):
+        """Return Current UTC in destination timezone.
+
+        Args:
+            destination_tz (str): Destination Timezone (defaults to host)
+
+        Returns datetime.datetime object.
+        """
+        if destination_tz is None:
+            destination_tz = self.tz
+        return from_utc(self.now, destination_tz)
+
+    def http(self):
+        """ Formatted Date for HTTP
+
+        Greenwich Mean Time. HTTP dates are always expressed in GMT, never in
+        local time. UTC is equal to GMT (+00:00)
+        """
+        return str(datetime.datetime.strftime(self.now, "%a, %d %b %Y" +
+                                              " %H:%M:%S" +
+                                              " GMT"))
+
+
+    def f_date(self, datetime=None, destination_tz=None):
+        """ Formatted Date
+
+        Many countries have adopted the ISO standard of year-month-day. For
+            example, 2015-3-30 (SAST).
+
+        Appends short timezone name.
+
+        Returns string formatted date.
+        """
+        if datetime is None:
+            datetime = self.from_utc(destination_tz)
+
+        return(datetime.strftime('%Y-%m-%d ') + "(" +
+               datetime.tzname() + ")")
+
+    def f_datetime(self, datetime=None, destination_tz=None):
+        """ Formatted Date
+
+        Many countries have adopted the ISO standard of year-month-day
+        hour:minute:seconds. For
+            example, 2015-3-30 10:15:25 (SAST).
+
+        Appends short timezone name.
+
+        Returns string formatted date.
+        """
+        if datetime is None:
+            datetime = self.from_utc(destination_tz)
+
+        return(datetime.strftime('%Y-%m-%d %H:%M:%S ') + "(" +
+               datetime.tzname() + ")")
+
+    def isodate(self, datetime=None, destination_tz=None):
+        """ ISO Formatted Date
+
+        Return a string representing the date in ISO 8601 format, ‘YYYY-MM-DD’
+
+        Returns string formatted date.
+        """
+        if datetime is None:
+            datetime = self.from_utc(destination_tz)
+
+        return datetime.strftime('%Y-%m-%d')
+
+    def __str__(self):
+        return str(self.now)

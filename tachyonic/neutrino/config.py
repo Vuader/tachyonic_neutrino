@@ -151,7 +151,6 @@ class Config(object):
         else:
             raise exceptions.Error('Configuration error loading file: %s' % config_file)
 
-
     def save(self, config_file):
         with open(config_file, 'wb') as f:
             self.config.write(f)
