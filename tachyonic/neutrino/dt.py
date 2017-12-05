@@ -159,7 +159,7 @@ class Datetime(object):
         return from_utc(self.now, destination_tz)
 
     def http(self):
-        """ Formatted Date for HTTP
+        """Formatted Date for HTTP
 
         Greenwich Mean Time. HTTP dates are always expressed in GMT, never in
         local time. UTC is equal to GMT (+00:00)
@@ -170,7 +170,7 @@ class Datetime(object):
 
 
     def f_date(self, datetime=None, destination_tz=None):
-        """ Formatted Date
+        """Formatted Date
 
         Many countries have adopted the ISO standard of year-month-day. For
             example, 2015-3-30 (SAST).
@@ -215,4 +215,4 @@ class Datetime(object):
         return datetime.strftime('%Y-%m-%d')
 
     def __str__(self):
-        return str(self.now)
+        return str(self.f_datetime())
