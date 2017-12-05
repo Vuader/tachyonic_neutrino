@@ -70,6 +70,9 @@ def _log(db, msg, debug=False, elapsed=0):
 class MysqlWrapper(object):
     """Simple Mysql Interface.
 
+    Ensure datatime is GMT/UTC as per Tachyonic standard and provides
+    logging and simple to use interface for interacting with MariaDb/Mysql.
+
     Args:
         name (str): Unique redis thread for specific pool/session.
         host (str): Host or IP of MySQL/Maraidb Server.
@@ -136,13 +139,21 @@ class MysqlWrapper(object):
 
         Args:
             query (str): SQL Query String.
-            params (str): Query values as per query string.
+            params (list): Query values as per query string.
 
         Returns:
             Parsed Results list containing dictionaries with field values per row.
         """
+        if isinstance(params, str):
+            # If only one paramter string value, formated to list
+            params = [ params ]
+        elif isinstance(params, tuple):
+            # Convert params to list if tuple.
+            params = list(params)
+
         result = _execute(self.db, self.cursor, query, params, self.debug)
         self.uncommited = True
+
         return result
 
     def fields(self, table):
@@ -246,7 +257,12 @@ def Mysql(name='default', host=None, username=None,
                               username=username, password=password,
                               database=database, debug=debug)
 
+    # PING AND RECONNECT
     mysql_wrapper.ping()
+
+    # SET TO UTC TIMEZONE
+    # specifically to SQL query based functions such as now()
+    mysql_wrapper.execute('SET time_zone = %s', '+00:00')
 
     return mysql_wrapper
 
@@ -327,6 +343,13 @@ def _parsed_params(params):
                     parsed.append(1)
                 else:
                     parsed.append(0)
+            # MYSQL cannot store timezone information in datetime field.
+            # Its therefor recommended to use the:
+            #    tachyonic.neutrino.dt.datetime() singleton.
+            # christiaan.rademan@gmail.com
+            #elif isinstance(param, datetime.datatime):
+                # Store as UTC_TIME if datetime
+            #    parsed.append(str(utc_time(param)))
             else:
                 parsed.append(param)
     return parsed
@@ -336,11 +359,17 @@ def _parsed_results(results):
 
     Returns list of rows.
     """
-    for result in results:
-        for field in result:
-            if isinstance(result[field], datetime.datetime):
-                # Format Date time to UTC Time.
-                result[field] = utc_time(result[field])
+    # Since the database connection timezone is set to +00:00
+    # all functions such as now() etc will store in UTC/GMT time.
+    # For datatime objects sent as params it will be converted to UTC
+    # Its therefor not neccessary to parse datatime. However this code
+    # is here for any other results that may require paring in future.
+    # christiaan.rademan@gmail.com.
+    #for result in results:
+    #    for field in result:
+    #        if isinstance(result[field], datetime.datetime):
+    #            # Format Date time to UTC Time.
+    #            result[field] = utc_time(result[field])
     return results
 
 def _execute(db, cursor, query=None, params=None, debug=False):
@@ -356,7 +385,7 @@ def _execute(db, cursor, query=None, params=None, debug=False):
         db: (object): pymysql connection object
         cursor (object): pymysql cursor provided by connection.
         query (str): SQL Query String.
-        params (str): Query values as per query string.
+        params (list): Query values as per query string.
         debug: (bool): Wether to log debug output.
 
     Returns:

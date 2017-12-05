@@ -29,7 +29,6 @@
 
 import logging
 import cgi
-import datetime
 import json
 from urllib import parse as urlparse
 from urllib.parse import quote
@@ -59,7 +58,7 @@ class Request(object):
     passing the Request as the first argument to the middleware and view function.
 
     The Request object also exposes a dict-like context property for passing
-    arbitrary data to hooks and middleware methods.
+    arbitrary data to hooks and middleware methods. (request.context)
 
     Args:
         environ (dict): dictionary containing CGI like environment

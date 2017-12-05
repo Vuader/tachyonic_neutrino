@@ -36,7 +36,7 @@ from tachyonic.neutrino import exceptions
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.wsgi.headers import Headers
 from tachyonic.neutrino.strings import if_unicode_to_utf8
-from tachyonic.neutrino.dt import utc_time
+from tachyonic.neutrino.dt import Datetime
 from tachyonic.neutrino.wsgi import router
 
 log = logging.getLogger(__name__)
@@ -271,8 +271,7 @@ class Response(object):
         self.headers['X-Request-ID'] = self._req.request_id
 
         # CACHING
-        now = utc_time()
-        now = datetime.datetime.strftime(now, "%a, %d %b %Y %H:%M:%S GMT")
+        now = Datetime().http()
         self.headers['Last-Modified'] = now
 
     def __setattr__(self, name, value):
