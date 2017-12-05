@@ -37,6 +37,8 @@ log = logging.getLogger(__name__)
 
 
 class Section(object):
+    """ConfigParser Section Convienance Wrapper.
+    """
     def __init__(self, section=None, config=None):
         if config is not None:
             self.config = config
@@ -76,9 +78,17 @@ class Section(object):
     def __str__(self):
         return str(self.section)
 
-    def get(self, key, default=None):
-        if key in self.options:
-            val = self.config.get(self.section, key)
+    def get(self, option, default=None):
+        """Get an option value for section.
+
+        Args:
+            option (str): Option.
+            default (str): Default Value (optional)
+
+        Returns str value.
+        """
+        if option in self.options:
+            val = self.config.get(self.section, option)
             if val.strip() != '':
                 return val
             else:
@@ -86,8 +96,14 @@ class Section(object):
         else:
             return default
 
-    def set(self, key, value):
-        return self.config.set(self.section, key, value)
+    def set(self, option, value):
+        """Set an option value for section.
+
+        Args:
+            option (str): Option.
+            value (str): Value.
+        """
+        return self.config.set(self.section, option, value)
 
     def dict(self):
         d = {}
@@ -95,16 +111,44 @@ class Section(object):
             d[key] = self.config.get(self.section, key)
         return d
 
-    def get_boolean(self, key=None, default=False):
-        if key in self.options:
-            return self.config.getboolean(self.section, key)
+    def get_boolean(self, option=None, default=False):
+        """Get Boolean value of option.
+        
+        A convenience method which coerces the option in the specified
+        section to a Boolean value. Note that the accepted values for the
+        option are "1", "yes", "true", and "on", which cause this method to
+        return True, and "0", "no", "false", and "off", which cause it to
+        return False. These string values are checked in a case-insensitive
+        manner.
+
+        If option is not found or value valid it will result in False.
+
+        Args:
+            option (str): Option.
+            default (str): Default Value (optional)
+
+        Returns boolean value.
+        """
+        if option in self.options:
+            return self.config.getboolean(self.section, option)
         else:
             return default
 
-    def get_int(self, key=None, default=False):
-        if key in self.options:
+    def get_int(self, option=None, default=False):
+        """Get Integer value of option.
+
+        A convenience method which coerces the option in the specified section
+        to an integer.
+
+        Args:
+            option (str): Option.
+            default (str): Default Value (optional)
+
+        Returns int value.
+        """
+        if option in self.options:
             try:
-                return int(self.config.get(self.section, key))
+                return int(self.config.get(self.section, option))
             except:
                 try:
                     return int(default)
@@ -116,9 +160,18 @@ class Section(object):
             except:
                 return 0
 
-    def get_items(self, key):
-        if key in self.options:
-            conf = self.get(key, '')
+    def get_items(self, option):
+        """Get options.
+
+        Return comma seperated values in option as list.
+
+        Args:
+            option (str): Option.
+
+        Returns list.
+        """
+        if option in self.options:
+            conf = self.get(option, '')
             conf = conf.replace(' ', '')
             if conf == '':
                 return []
@@ -128,10 +181,26 @@ class Section(object):
             return []
 
     def items(self, key):
+        """Get options.
+
+        Alias for get_items method.
+
+        Args:
+            option (str): Option.
+
+        Returns list.
+        """
         return self.get_items(self, key)
 
 
 class Config(object):
+    """ConfigParser Convienance Wrapper.
+
+    Ensures configuration is loaded and provides high level API.
+
+    Args:
+        config_file (str): Path / Location to configuration file. (Optional)
+    """
     def __init__(self, config_file=None):
         self.sections = {}
         self.config = configparser.ConfigParser()
@@ -139,6 +208,11 @@ class Config(object):
             self.load(config_file)
 
     def load(self, config_file):
+        """Load Configuration file.
+
+        Args:
+            config_file (str): Path / Location to configuration file.
+        """
         if os.path.isfile(config_file) and os.access(config_file, os.R_OK):
             self.config.read(config_file)
             sections = self.config.sections()
@@ -152,29 +226,67 @@ class Config(object):
             raise exceptions.Error('Configuration error loading file: %s' % config_file)
 
     def save(self, config_file):
+        """Save Configuration file.
+
+        Args:
+            config_file (str): Path / Location to configuration file.
+        """
         with open(config_file, 'w') as f:
             self.config.write(f)
 
-    def get(self, key):
-        if key in self.sections:
-            return self.sections[key]
+    def get(self, section):
+        """Get an given section.
+
+        If section does not exisit return empty section.
+
+        Args:
+            section (str): Section Name.
+        """
+        if section in self.sections:
+            return self.sections[section]
         else:
             return Section()
 
-    def __getitem__(self, key):
-        return self.sections[key]
+    def __getitem__(self, section):
+        """Get an given section.
 
-    def __contains__(self, key):
-        if key in self.sections:
+        If section does not exisit return empty section.
+        """
+        return self.get(section)
+
+    def __contains__(self, section):
+        """Validate if section exisits.
+        """
+        if section in self.sections:
             return True
         else:
             return False
 
-    def get_items(self, key):
-        if key in self.sections:
-            return self.config.items(key)
+    def get_items(self, section):
+        """Get all options in section.
+
+        If section does not exisit return empty list.
+
+        Args:
+            section (str): Section Name.
+
+        Return a list of (name, value) pairs for each option in the given
+        section.
+        """
+        if section in self.sections:
+            return self.config.items(section)
         else:
             return []
 
     def items(self, key):
+        """Get all options in section.
+
+        Alias for get_items method.
+
+        Args:
+            section (str): Section Name.
+
+        Return a list of (name, value) pairs for each option in the given
+        section.
+        """
         return self.get_items(self, key)
