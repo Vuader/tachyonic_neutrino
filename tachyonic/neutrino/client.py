@@ -210,7 +210,7 @@ class Client(RestClient):
                     m[field] = obj.get(field)
                 data = json.dumps(m, indent=4, cls=self._JsonEncoder)
             else:
-                log.error(obj)
+                log.error(filter_none_text(obj))
                 data = json.dumps(obj, indent=4, cls=self._JsonEncoder)
         else:
             data = None
