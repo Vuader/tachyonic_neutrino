@@ -153,7 +153,7 @@ class Config(object):
 
 
     def save(self, config_file):
-        with open(config_file, 'wb') as f:
+        with open(config_file, 'w') as f:
             self.config.write(f)
 
     def get(self, key):
