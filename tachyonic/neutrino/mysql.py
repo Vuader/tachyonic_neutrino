@@ -44,6 +44,29 @@ from tachyonic.neutrino.dt import utc_time
 
 log = logging.getLogger(__name__)
 
+def _log(db, msg, debug=False, elapsed=0):
+    """Debug Log Function
+
+    Function to log in the case where debugging
+    is enabled.
+
+    Args:
+        db (object): pymysql connection object.
+        msg (str): Log message.
+        debug (bool): Wether to log debug output.
+        elapsed (float): Time elapsed.
+    """
+    if debug is True:
+        log_msg = (msg +
+                   "(%s,%s,%s) (DURATION: %.4fs)" %
+                   (db.get_server_info(),
+                    db.get_host_info(),
+                    db.thread_id,
+                    elapsed))
+        if elapsed > 0.1:
+            log_msg = "!SLOW! " + log_msg
+        log.debug(log_msg)
+
 class MysqlWrapper(object):
     """Simple Mysql Interface.
 
@@ -121,7 +144,6 @@ class MysqlWrapper(object):
         Returns:
             Parsed Results list containing dictionaries with field values per row.
         """
-
         if isinstance(params, str):
             # If only one paramter string value, formated to list
             params = [ params ]
@@ -129,7 +151,7 @@ class MysqlWrapper(object):
             # Convert params to list if tuple.
             params = list(params)
 
-        result = _execute(self.cursor, query, params, self.debug)
+        result = _execute(self.db, self.cursor, query, params, self.debug)
         self.uncommited = True
 
         return result
@@ -196,9 +218,6 @@ class MysqlWrapper(object):
     def commit(self):
         """Commit Transactionl Queries.
 
-        Generally you do not need to use this function directly, as its
-        provided as method of the MysqlWrapper class.
-
         If the database and the tables support transactions, this commits the
         current transaction; otherwise this method successfully does nothing.
         """
@@ -208,9 +227,6 @@ class MysqlWrapper(object):
 
     def rollback(self):
         """Rollback Transactional Queries
-
-        Generally you do not need to use this function directly, as its
-        provided as method of the MysqlWrapper class.
 
         If the database and tables support transactions, this rolls back
         (cancels) the current transaction; otherwise a NotSupportedError is raised.
@@ -356,7 +372,7 @@ def _parsed_results(results):
     #            result[field] = utc_time(result[field])
     return results
 
-def _execute(cursor, query=None, params=None, debug=False):
+def _execute(db, cursor, query=None, params=None, debug=False):
     """Execute SQL Query.
 
     Generally you do not need to use this function directly, as its
@@ -366,9 +382,11 @@ def _execute(cursor, query=None, params=None, debug=False):
     queries on it.
 
     Args:
+        db: (object): pymysql connection object
         cursor (object): pymysql cursor provided by connection.
         query (str): SQL Query String.
         params (list): Query values as per query string.
+        debug: (bool): Wether to log debug output.
 
     Returns:
         Parsed Results list containing dictionaries with field values per row.
@@ -385,13 +403,7 @@ def _execute(cursor, query=None, params=None, debug=False):
             raise MySQLdb.IntegrityError(code, value)
 
         result = cursor.fetchall()
-
-        if debug is True:
-            if elapsed() > 0.1:
-                log.debug("!SLOW! Query %s (DURATION: %s)" % (log_query,
-                                                              elapsed()))
-            else:
-                log.debug("Query %s (DURATION: %s)" % (log_query, elapsed()))
+        _log(db, "Query %s" % log_query, debug, elapsed())
 
         return _parsed_results(result)
 
@@ -403,25 +415,14 @@ def _commit(db, debug=False):
 
     If the database and the tables support transactions, this commits the
     current transaction; otherwise this method successfully does nothing.
+
+    Args:
+        db (object): pymysql connection object.
+        debug (bool): Wether to log debug output.
     """
     with timer() as elapsed:
         db.commit()
-
-        if debug is True:
-            if elapsed() > 0.1:
-                log.debug("!SLOW! Commit" +
-                          " (%s,%s,%s) (DURATION: %s)" %
-                          (db.get_server_info(),
-                           db.get_host_info(),
-                           db.thread_id,
-                           timer))
-            else:
-                log.debug("Commit" +
-                          "(%s,%s,%s) (DURATION: %s)" %
-                          (db.get_server_info(),
-                           db.get_host_info(),
-                           db.thread_id,
-                           timer))
+        _log(db, "Commit", debug, elapsed())
 
 def _rollback(db, debug=False):
     """Rollback Transactional Queries
@@ -431,22 +432,11 @@ def _rollback(db, debug=False):
 
     If the database and tables support transactions, this rolls back
     (cancels) the current transaction; otherwise a NotSupportedError is raised.
+
+    Args:
+        db (object): pymysql connection object.
+        debug (bool): Wether to log debug output.
     """
     with timer() as elapsed:
         db.rollback()
-
-        if debug is True:
-            if elapsed() > 0.1:
-                log.debug("!SLOW! Rollback" +
-                          " (%s,%s,%s) (DURATION: %s)" %
-                          (db.get_server_info(),
-                           db.get_host_info(),
-                           db.thread_id,
-                           elapsed()))
-            else:
-                log.debug("Rollback" +
-                          " (%s,%s,%s) (DURATION: %s)" %
-                          (db.get_server_info(),
-                           db.get_host_info(),
-                           db.thread_id,
-                           elapsed()))
+        _log(db, "Rollback", debug, elapsed())

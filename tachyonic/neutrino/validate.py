@@ -80,7 +80,7 @@ def is_binary(data):
     elif isinstance(data, bytes):
         try:
             # if s contains any null, it's not text:
-            if "\0" in data:
+            if "\0".encode() in data:
                 return True
             # an "empty" string is "text" (arbitrary but reasonable choice):
             # decode byte string from utf-8 to string.
@@ -89,6 +89,7 @@ def is_binary(data):
         except UnicodeDecodeError:
             # UnicodeDecodError means binary...
             return True
+        return True
     else:
         return False
 
