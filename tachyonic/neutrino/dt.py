@@ -35,28 +35,44 @@ from tzlocal import get_localzone
 
 log = logging.getLogger(__name__)
 
+def parse_datetime(datetime_obj):
+    """Parse Datetime Object.
 
-def utc_time(py_datetime_obj=None, source_tz=None):
+    * Validates if valid datetime object.
+    * Used to set timezone to UTC if naive.
+
+    Returns datetime object with UTC timezone.
+    """
+    if isinstance(datetime_obj, datetime.datetime):
+        if datetime_obj.tzname() is None:
+            datetime_obj = pytz.utc.localize(datetime_obj)
+
+        return datetime_obj
+    else:
+        raise TypeError('parse_datetime: Not datetime object')
+
+
+def utc_time(datetime_obj=None, source_tz=None):
     """Return UTC DataTime.
 
     Return UTC timezone from specified source timezone.
 
     Args:
-        py_datetime_obj (datatime.datatime): DataTime Object (defaults to now)
+        datetime_obj (datatime.datatime): DataTime Object (defaults to now)
         source_tz (str): Source Timezone (defaults to host)
 
     Returns datetime.datetime object.
     """
-    if py_datetime_obj is None:
-        py_datetime_obj = datetime.datetime.now()
+    if datetime_obj is None:
+        datetime_obj = datetime.datetime.now()
 
     if source_tz is None:
         source_tz = str(get_localzone())
 
-    py_datetime_obj = pytz.timezone(source_tz).localize(py_datetime_obj)
+    datetime_obj = pytz.timezone(source_tz).localize(datetime_obj)
     utc = pytz.timezone('UTC')
 
-    return py_datetime_obj.astimezone(utc)
+    return datetime_obj.astimezone(utc)
 
 def from_utc(utc_time, destination_tz=None):
     """Return Destination DataTime from UTC.
@@ -169,24 +185,57 @@ class Datetime(object):
                                               " GMT"))
 
 
+    def _format(self, datetime=None, destination_tz=None):
+        if datetime is None:
+            datetime = self.from_utc(destination_tz)
+        else:
+            datetime = parse_datetime(datetime)
+            datetime = from_utc(datetime, self.tz)
+
+        return datetime
+
     def f_date(self, datetime=None, destination_tz=None):
-        """Formatted Date
+        """Formatted Date.
 
         Many countries have adopted the ISO standard of year-month-day. For
             example, 2015-3-30 (SAST).
 
         Appends short timezone name.
 
+        Args:
+            datetime (datetime): Datetime object. (Optional)
+            destination_tz (str): Destination Timezone.
+                List of valid entries in timezones attribute.
+
         Returns string formatted date.
         """
-        if datetime is None:
-            datetime = self.from_utc(destination_tz)
+        datetime = self._format(datetime, destination_tz)
 
         return(datetime.strftime('%Y-%m-%d ') + "(" +
                datetime.tzname() + ")")
 
+    def f_time(self, datetime=None, destination_tz=None):
+        """Formatted Time.
+
+        Many countries have adopted the ISO standard of year-month-day. For
+            example, 2015-3-30 (SAST).
+
+        Appends short timezone name.
+
+        Args:
+            datetime (datetime): Datetime object. (Optional)
+            destination_tz (str): Destination Timezone.
+                List of valid entries in timezones attribute.
+
+        Returns string formatted date.
+        """
+        datetime = self._format(datetime, destination_tz)
+
+        return(datetime.strftime('%H:%M:%S ') + "(" +
+               datetime.tzname() + ")")
+
     def f_datetime(self, datetime=None, destination_tz=None):
-        """ Formatted Date
+        """Formatted Date & Time.
 
         Many countries have adopted the ISO standard of year-month-day
         hour:minute:seconds. For
@@ -194,25 +243,54 @@ class Datetime(object):
 
         Appends short timezone name.
 
+        Args:
+            datetime (datetime): Datetime object. (Optional)
+            destination_tz (str): Destination Timezone.
+                List of valid entries in timezones attribute.
+
         Returns string formatted date.
         """
-        if datetime is None:
-            datetime = self.from_utc(destination_tz)
+        datetime = self._format(datetime, destination_tz)
 
         return(datetime.strftime('%Y-%m-%d %H:%M:%S ') + "(" +
                datetime.tzname() + ")")
 
     def isodate(self, datetime=None, destination_tz=None):
-        """ ISO Formatted Date
+        """ ISO Formatted Date.
 
         Return a string representing the date in ISO 8601 format, ‘YYYY-MM-DD’
 
+        Args:
+            datetime (datetime): Datetime object. (Optional)
+            destination_tz (str): Destination Timezone.
+                List of valid entries in timezones attribute.
+
         Returns string formatted date.
         """
-        if datetime is None:
-            datetime = self.from_utc(destination_tz)
+        datetime = self._format(datetime, destination_tz)
 
         return datetime.strftime('%Y-%m-%d')
+
+    def diff(self, datetime, datetime2=None):
+        """Return difference between two datetimes.
+
+        Equation: datetime2 - datetime
+
+        Args:
+            datetime (datetime): Datetime to compare.
+            datetime2 (datetime): Datetime to compare. (default current)
+
+        Returns difference in seconds (float)
+        """
+        if datetime2 is None:
+            datetime2 = self.now
+
+        if datetime.tzname() != datetime2.tzname():
+            raise TypeError('cannot compare datetime with different timezones.')
+
+        datetime = parse_datetime(datetime)
+
+        return(datetime2 - datetime).total_seconds()
 
     def __str__(self):
         return str(self.f_datetime())
