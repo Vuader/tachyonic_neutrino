@@ -27,82 +27,35 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
-import sys
-import stat
 import logging
+import json
+import datetime
+from decimal import Decimal
 
 log = logging.getLogger(__name__)
 
-def is_socket(socket):
-    """Is Unix socket
-
-    Returns Bool wether file is unix socket.
-
-    Args:
-        socket (str): Socket path.
-    """
-    try:
-        mode = os.stat(socket).st_mode
-        is_socket = stat.S_ISSOCK(mode)
-    except:
-        is_socket = False
-    return is_socket
-
-def is_text(text):
-    """Is Text?
-
-    Returns Bool wether text.
-
-    Args:
-        text (str/bytes): Socket path.
-    """
-    if isinstance(text, str):
-            return True
-    elif isinstance(text, bytes):
-        if is_binary(text):
-            return False
+class _JsonEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            # Parse Decimal Value
+            return str(o)
+        elif isinstance(o, datetime.datetime):
+            # Parse Datetime
+            return str(o.strftime("%Y/%m/%d %H:%M:%S"))
+        elif isinstance(o, bytes):
+            return o.decode('utf-8')
         else:
-            return True
-    else:
-        return False
+            # Pass to Default Encoder
+            return json.JSONEncoder.default(self, o)
 
-def is_binary(data):
-    """Is Binary?
+def loads(json_text, **kwargs):
+    if isinstance(json_text, bytes):
+        # JSON requires str not bytes hence decode.
+        json_text = json_text.decode('UTF-8')
 
-    Returns Bool wether binary.
+    return json.loads(json_text, **kwargs)
 
-    Args:
-        data (str/bytes): Possible binary or string.
-    """
-    if isinstance(data, str):
-        return False
-    elif isinstance(data, bytes):
-        try:
-            # if s contains any null, it's not text:
-            if b"\0" in data:
-                return True
-            data.decode('UTF-8')
-            return False
-        except UnicodeDecodeError:
-            # UnicodeDecodError means binary...
-            return True
-        return True
-    else:
-        return False
+def dumps(obj):
+    return json.dumps(obj, indent=4, cls=_JsonEncoder)
 
-def is_byte_string(string):
-    """Is Bytes String?
 
-    Returns Bool wether Bytes String?
-
-    Args:
-        string (bytes): Possible binary or string.
-    """
-    if isinstance(string, bytes):
-        if is_binary(string):
-            return False
-        else:
-            return True
-    else:
-        return False

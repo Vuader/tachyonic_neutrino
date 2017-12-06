@@ -63,7 +63,7 @@ def http_moved_permanently(url, req, resp):
         app = req.get_app_url()
         url = url.strip('/')
         url = "%s/%s" % (app, url)
-    resp.status = const.HTTP_301
+    resp.status = 301
     resp.headers['Location'] = url
 
 
@@ -104,7 +104,7 @@ def http_found(url, req, resp):
         app = req.get_app_url()
         url = url.strip('/')
         url = "%s/%s" % (app, url)
-    resp.status = const.HTTP_302
+    resp.status = 302
     resp.headers['Location'] = url
 
 
@@ -160,7 +160,7 @@ def http_see_other(url, req, resp):
         app = req.get_app_url()
         url = url.strip('/')
         url = "%s/%s" % (app, url)
-    resp.status = const.HTTP_303
+    resp.status = 303
     resp.headers['Location'] = url
 
 
@@ -195,7 +195,7 @@ def http_temporary_redirect(url, req, resp):
         app = req.get_app_url()
         url = url.strip('/')
         url = "%s/%s" % (app, url)
-    resp.status = const.HTTP_307
+    resp.status = 307
     resp.headers['Location'] = url
 
 
@@ -231,7 +231,7 @@ def http_permanent_redirect(url, req, resp):
         app = req.get_app_url()
         url = url.strip('/')
         url = "%s/%s" % (app, url)
-    resp.status = const.HTTP_308
+    resp.status = 308
     resp.headers['Location'] = url
 
 
@@ -259,14 +259,14 @@ class Response(object):
     _attributes = ['status']
 
     def __init__(self, req=None):
-        self.status = const.HTTP_200
+        self.status = 200
         super(Response, self).__setattr__('headers', Headers())
         super(Response, self).__setattr__('_io', BytesIO())
         super(Response, self).__setattr__('content_length', 0)
         super(Response, self).__setattr__('_req', req)
 
         # Default Headers
-        self.headers['Content-Type'] = const.TEXT_HTML
+        self.content_type = const.TEXT_HTML
         self.headers['X-Powered-By'] = 'Tachyonic'
         self.headers['X-Request-ID'] = self._req.request_id
 
@@ -281,12 +281,21 @@ class Response(object):
             self.clear()
             super(Response, self).__setattr__('_io', BytesIO())
             self.write(value)
+        elif name == 'content_type':
+            # Set Content Type Header
+            self.headers['Content-Type'] = value
         else:
             AttributeError("'response' object can't bind" +
                            " attribute '%s'" % (name,))
 
+    def __getattr__(self, name):
+        if name == 'content_type':
+            return self.headers['Content-Type']
+        else:
+            return getattr(self, name)
+
     def modified(self, datetime_obj):
-        """ Set content modified GMT date and time.
+        """Set content modified GMT date and time.
 
         If date and time is equel to the value in the client (browser) cache,
         the content will not be returned. a HTTP 304 Not Modified is sent and the

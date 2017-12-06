@@ -98,6 +98,9 @@ def hash(password, algo=const.BLOWFISH, rounds=15):
         raise Error('Invalid hash specified %s' % algo)
     return hashed
 
+
+
+
 def valid(password, hashed):
     """ Validate password against hash.
 
@@ -108,13 +111,24 @@ def valid(password, hashed):
 
     Return bool wether password matches.
     """
-    pwd_context = passlib.context.CryptContext(schemes=["md5_crypt", "bcrypt", "sha256_crypt", "sha512_crypt",
-                                                        "ldap_md5", "ldap_salted_md5", "ldap_sha1", "ldap_salted_sha1",
-                                                        "ldap_bcrypt", "ldap_sha256_crypt", "ldap_sha512_crypt"])
 
+    # Initilize pwd_content globally per process.
+    # Purpose is faster loading initially.
+    global pwd_context
+
+    try:
+        pwd_context
+    except:
+        schemes=["md5_crypt", "bcrypt", "sha256_crypt", "sha512_crypt",
+                 "ldap_md5", "ldap_salted_md5", "ldap_sha1", "ldap_salted_sha1",
+                 "ldap_bcrypt", "ldap_sha256_crypt", "ldap_sha512_crypt"]
+        pwd_context = passlib.context.CryptContext(schemes=schemes)
+
+    # If Password is Clear-Text
     if password == hashed:
         return True
     else:
+        # Validate Password using pwd_context
         if pwd_context.verify(password, hashed):
             return True
         else:

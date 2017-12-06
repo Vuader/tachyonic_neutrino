@@ -27,6 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+_cc = 0
+
+def creation_counter():
+    global _cc
+    _cc += 1
+    return _cc
+
+
 import tachyonic as root
 from .wsgi import Wsgi
 from .restclient import RestClient
@@ -39,16 +47,7 @@ __author__ = metadata.authors[0]
 __license__ = metadata.license
 __copyright__ = metadata.copyright
 
-_cc = 0
-
-def creation_counter():
-    global _cc
-    _cc += 1
-    return _cc
-
-
 app = Wsgi()
-
 
 # BACKWARDS COMPATIBLE - Tachyonic namespace
 # These only work if Neutrino is imported.

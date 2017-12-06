@@ -30,24 +30,26 @@
 import os
 import sys
 import logging
-import json
 import traceback
 import signal
+from collections import OrderedDict
 
 from jinja2.exceptions import TemplateNotFound
 
+from tachyonic.neutrino import js
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.dt import Datetime
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino.mysql import Mysql
-from tachyonic.neutrino.redissy import redis
+from tachyonic.neutrino.rd import strict as redis
 from tachyonic.neutrino.policy import Policy
 from tachyonic.neutrino.wsgi.base import Base
 from tachyonic.neutrino.wsgi.error import Error
 from tachyonic.neutrino.wsgi.request import Request
 from tachyonic.neutrino.wsgi.response import Response
+from tachyonic.neutrino.wsgi.headers import status_codes
 
 log = logging.getLogger(__name__)
 
@@ -154,6 +156,13 @@ class Wsgi(Base, Error):
                         returned = obj(req, resp, **obj_kwargs)
                         if isinstance(returned, (str, bytes)):
                             resp.write(returned)
+                        elif isinstance(returned, (OrderedDict, dict, list)):
+                            resp.content_type = const.APPLICATION_JSON
+                            resp.write(js.dumps(returned))
+                        elif hasattr(returned, 'json'):
+                            # IF JSON SERIALIZEABLE OBJECT
+                            resp.content_type = const.APPLICATION_JSON
+                            resp.write(returned.json())
                     else:
                         raise exceptions.HTTPForbidden('Access Forbidden',
                                                        'Access denied by application' +
@@ -176,7 +185,8 @@ class Wsgi(Base, Error):
                 self._error(e, req, resp)
 
             # Send status and headers to the server using the supplied function
-            start_response(resp.status, resp.wsgi_headers())
+            start_response("%s %s" % (resp.status, status_codes[resp.status]),
+                           resp.wsgi_headers())
 
             # Clean Process
             self._cleanup()
@@ -185,10 +195,12 @@ class Wsgi(Base, Error):
             req.session.save()
 
             # Return Body
-            if (returned is not None and
-                    not isinstance(returned, (str, bytes))):
+            if resp.content_length == 0:
                 # Return iterable object - from view.
-                return returned
+                if returned is not None:
+                    return returned
+                else:
+                    return ''.encode('UTF-8')
             else:
                 # Return response object
                 return resp

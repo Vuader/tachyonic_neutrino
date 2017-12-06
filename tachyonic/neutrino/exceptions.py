@@ -30,6 +30,7 @@
 import logging
 
 from tachyonic.neutrino import constants as const
+from tachyonic.neutrino.wsgi.headers import status_codes
 
 log = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class Authentication(ValidationError):
     def __init__(self, description):
         Exception.__init__(self, description)
         self.description = description
-        self.status = const.HTTP_403
+        self.status = 403
 
     def __str__(self):
         return str(self.description)
@@ -103,18 +104,8 @@ class MultipleOblectsReturned(ValidationError):
 
 
 class RestClientError(Error):
-    def __init__(self, description):
+    def __init__(self, description, status=500):
         Error.__init__(self, description)
-        self.description = description
-
-    def __str__(self):
-        return str(self.description)
-
-
-class ClientError(RestClientError):
-    def __init__(self, title, description, status=const.HTTP_500):
-        RestClientError.__init__(self, description)
-        self.title = title
         self.description = description
         self.status = status
 
@@ -122,13 +113,21 @@ class ClientError(RestClientError):
         return str(self.description)
 
 
+class ClientError(RestClientError):
+    def __init__(self, title, description, status=500):
+        RestClientError.__init__(self, description, status)
+        self.title = title
+        self.description = description
+
+    def __str__(self):
+        return str(self.description)
+
+
 class HTTPError(Error):
-    def __init__(self, status, title, description):
+    def __init__(self, status=500, title=None, description=None):
         Exception.__init__(self, description)
-        if status is not None:
-            self.status = status
-        else:
-            self.status = const.HTTP_500
+
+        self.status = status
 
         if title is not None:
             self.title = title
@@ -145,7 +144,8 @@ class HTTPError(Error):
             if self.description is not None:
                 msg += "%s" % self.description
         else:
-            msg = self.status
+            msg = "%s %s" % (self.status,
+                             status_codes[self.status])
 
         return str(msg)
 
@@ -156,7 +156,7 @@ class HTTPNotModified(HTTPError):
     """
 
     def __init__(self):
-        super(HTTPNotModified, self).__init__(const.HTTP_304, None, None)
+        super(HTTPNotModified, self).__init__(304, None, None)
 
 
 class HTTPBadRequest(HTTPError):
@@ -165,7 +165,7 @@ class HTTPBadRequest(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPBadRequest, self).__init__(const.HTTP_400, title, description)
+        super(HTTPBadRequest, self).__init__(400, title, description)
 
 
 class HTTPUnauthorized(HTTPError):
@@ -174,7 +174,7 @@ class HTTPUnauthorized(HTTPError):
     """
 
     def __init__(self, title, description, challenges=None):
-        super(HTTPUnauthorized, self).__init__(const.HTTP_401, title, description)
+        super(HTTPUnauthorized, self).__init__(401, title, description)
 
         if challenges is not None:
             self.headers['WWW-Authenticate'] = ', '.join(challenges)
@@ -186,7 +186,7 @@ class HTTPForbidden(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPForbidden, self).__init__(const.HTTP_403, title, description)
+        super(HTTPForbidden, self).__init__(403, title, description)
 
 
 class HTTPNotFound(HTTPError):
@@ -195,7 +195,7 @@ class HTTPNotFound(HTTPError):
     """
 
     def __init__(self, title='Not found', description=None):
-        super(HTTPNotFound, self).__init__(const.HTTP_404, title, description)
+        super(HTTPNotFound, self).__init__(404, title, description)
 
 
 class HTTPMethodNotAllowed(HTTPError):
@@ -204,7 +204,7 @@ class HTTPMethodNotAllowed(HTTPError):
     """
 
     def __init__(self, allowed_methods=None):
-        super(HTTPMethodNotAllowed, self).__init__(const.HTTP_405)
+        super(HTTPMethodNotAllowed, self).__init__(405)
         if allowed_methods is not None:
             self.headers['Allow'] = ', '.join(allowed_methods)
 
@@ -215,7 +215,7 @@ class HTTPNotAcceptable(HTTPError):
     """
 
     def __init__(self, description):
-        super(HTTPNotAcceptable, self).__init__(const.HTTP_406, 'Media type not acceptable', description)
+        super(HTTPNotAcceptable, self).__init__(406, 'Media type not acceptable', description)
 
 
 class HTTPConflict(HTTPError):
@@ -224,7 +224,7 @@ class HTTPConflict(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPConflict, self).__init__(const.HTTP_409, title, description)
+        super(HTTPConflict, self).__init__(409, title, description)
 
 
 class HTTPLengthRequired(HTTPError):
@@ -233,7 +233,7 @@ class HTTPLengthRequired(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPLengthRequired, self).__init__(const.HTTP_411, title, description)
+        super(HTTPLengthRequired, self).__init__(411, title, description)
 
 
 class HTTPPreconditionFailed(HTTPError):
@@ -242,7 +242,7 @@ class HTTPPreconditionFailed(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPPreconditionFailed, self).__init__(const.HTTP_412, title, description)
+        super(HTTPPreconditionFailed, self).__init__(412, title, description)
 
 
 class HTTPUnsupportedMediaType(HTTPError):
@@ -251,7 +251,7 @@ class HTTPUnsupportedMediaType(HTTPError):
     """
 
     def __init__(self, description):
-        super(HTTPUnsupportedMediaType, self).__init__(const.HTTP_415, 'Unsupported media type', description)
+        super(HTTPUnsupportedMediaType, self).__init__(415, 'Unsupported media type', description)
 
 
 class HTTPUnprocessableEntity(HTTPError):
@@ -260,7 +260,7 @@ class HTTPUnprocessableEntity(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPUnprocessableEntity, self).__init__(const.HTTP_422, title, description)
+        super(HTTPUnprocessableEntity, self).__init__(422, title, description)
 
 
 class HTTPTooManyRequests(HTTPError):
@@ -269,7 +269,7 @@ class HTTPTooManyRequests(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPTooManyRequests, self).__init__(const.HTTP_429, title, description)
+        super(HTTPTooManyRequests, self).__init__(429, title, description)
 
 
 class HTTPUnavailableForLegalReasons(HTTPError):
@@ -278,7 +278,7 @@ class HTTPUnavailableForLegalReasons(HTTPError):
     """
 
     def __init__(self, title):
-        super(HTTPUnavailableForLegalReasons, self).__init__(const.HTTP_451, title)
+        super(HTTPUnavailableForLegalReasons, self).__init__(451, title)
 
 
 class HTTPInternalServerError(HTTPError):
@@ -287,7 +287,7 @@ class HTTPInternalServerError(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPInternalServerError, self).__init__(const.HTTP_500, title, description)
+        super(HTTPInternalServerError, self).__init__(500, title, description)
 
 
 class HTTPBadGateway(HTTPError):
@@ -296,7 +296,7 @@ class HTTPBadGateway(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPBadGateway, self).__init__(const.HTTP_502, title, description)
+        super(HTTPBadGateway, self).__init__(502, title, description)
 
 
 class HTTPServiceUnavailable(HTTPError):
@@ -305,7 +305,7 @@ class HTTPServiceUnavailable(HTTPError):
     """
 
     def __init__(self, title, description):
-        super(HTTPServiceUnavailable, self).__init__(const.HTTP_503, title, description)
+        super(HTTPServiceUnavailable, self).__init__(503, title, description)
 
 
 class HTTPInvalidHeader(HTTPBadRequest):

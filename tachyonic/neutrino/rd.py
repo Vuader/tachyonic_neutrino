@@ -28,17 +28,17 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
-import redis as rd
+import redis
 
 from tachyonic.neutrino.shrek import Shrek
 
 log = logging.getLogger(__name__)
 
 # Create pooling group for StrictRedis  using Shrek
-shrek = Shrek(rd.StrictRedis)
+shrek = Shrek(redis.StrictRedis)
 
-def redis(name='default', host='127.0.0.1', port=6379, db=0):
-    """Simple Redis Interface.
+def strict(name='default', host='127.0.0.1', port=6379, db=0):
+    """Simple Redis strict wrapper for Shrek
 
     Uses Neutrino Shrek for pooling redis sessions on per thread basis.
 

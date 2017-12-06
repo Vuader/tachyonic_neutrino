@@ -28,51 +28,53 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
-import re
-from io import BytesIO
-
-import tachyonic as root
+import requests
+from collections import OrderedDict
 
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.validate import is_text
 from tachyonic.neutrino import constants as const
-from tachyonic.neutrino import exceptions
+from tachyonic.neutrino.exceptions import RestClientError
 from tachyonic.neutrino.wsgi.headers import Headers
+from tachyonic.neutrino.url import host_url
+from tachyonic.neutrino import js
 
 log = logging.getLogger(__name__)
 
-curl_session = ThreadDict()
+req_session = ThreadDict()
 
-if hasattr(root, 'debug'):
-    debug = root.debug
-else:
-    debug = True
-
-
-def _debug(debug_type, debug_msg):
-    try:
-        if is_text(str(debug_msg)):
-            log.debug("(%d): %s" % (debug_type, str(debug_msg)))
+def _debug(method, url, payload, request_headers, response_headers,
+           response, status):
+    if log.getEffectiveLevel() <= logging.DEBUG:
+        log.debug('Method: %s, URL: %s (%s)' % (method,
+                                                url,
+                                                status))
+        log.debug('Request Headers: %s' % request_headers)
+        log.debug('Response Headers: %s' % response_headers)
+        if is_text(payload):
+            if isinstance(payload, bytes):
+                payload = payload.decode('UTF-8')
+            payload = payload.split('\n')
+            for l, p in enumerate(payload):
+                log.debug('Request Payload (%s): %s' % (l, p))
         else:
-            log.debug("(%d): Binary" % (debug_type))
-    except UnicodeDecodeError:
-        log.debug("(%d): Binary" % (debug_type))
-        pass
+            log.debug('Request Payload: BINARY')
+
+        if is_text(response):
+            response = response.decode('UTF-8').split('\n')
+            for l, p in enumerate(response):
+                log.debug('Response Payload (%s): %s' % (l, p))
+        else:
+            log.debug('Response Payload: BINARY')
 
 class RestClient(object):
     def __init__(self, ssl_verify=False, ssl_verify_peer=True,
                  ssl_verify_host=True, ssl_cacert=None,
                  ssl_cainfo=None, timeout=30, connect_timeout=2,
                  ssl_cipher_list = None, username=None, password=None,
-                 debug=debug):
-        # Register Cleanup for use with Neutrino
-        # However Neutrino is not always installed with restclient...
-        try:
-            import tachyonic.neutrino
-            tachyonic.neutrino.app.register_cleanup(RestClient.close_all)
-        except:
-            pass
+                 debug=False):
+
 
         self.ssl_cipher_list = ssl_cipher_list
         self.username = username
@@ -98,163 +100,78 @@ class RestClient(object):
         self.timeout = timeout
         self.connect_timeout = connect_timeout
 
-    def header_function(self, header_line):
-        # HTTP standard specifies that headers are encoded in iso-8859-1.
-        # On Python 2, decoding step can be skipped.
-        # On Python 3, decoding step is required.
-        header_line = header_line.decode('iso-8859-1')
-
-        # Header lines include the first status line (HTTP/1.x ...).
-        # We are going to ignore all lines that don't have a colon in them.
-        # This will botch headers that are split on multiple lines...
-        if ':' not in header_line:
-            return
-
-        # Break the header line into header name and value.
-        name, value = header_line.split(':', 1)
-
-        # Remove whitespace that may be present.
-        # Header lines include the trailing newline, and
-        # there may be whitespace around the colon.
-        name = name.strip()
-        value = value.strip()
-
-        # Header names are case insensitive.
-        # Lowercase name here.
-        name = name.lower()
-
-        # Now we can actually record the header name and value.
-        self.server_headers[name] = value
-
-    def get_host_port_from_url(self, url):
-        url_splitted = url.split('/')
-        host = "%s//%s" % (url_splitted[0], url_splitted[2])
-        return host
-
-    def execute(self, method, url, data=None, headers=[]):
-        import pycurl
-        host = self.get_host_port_from_url(url)
-        if host in curl_session:
-            curl = curl_session[host]
-        else:
-            curl_session[host] = pycurl.Curl()
-            curl = curl_session[host]
-
-        url = url.replace(" ", "%20")
-
-        method = method.upper()
-
-        self.server_headers = dict()
-
-        buffer = BytesIO()
-
-        curl.setopt(curl.URL, if_unicode_to_utf8(url))
-        try:
-            curl.setopt(curl.WRITEDATA, buffer)
-        except TypeError:
-            curl.setopt(curl.WRITEFUNCTION, buffer.write)
-
-        curl.setopt(curl.HEADERFUNCTION, self.header_function)
-        curl.setopt(curl.FOLLOWLOCATION, True)
-        curl.setopt(curl.SSL_VERIFYPEER, self.ssl_verify_peer)
-        curl.setopt(curl.SSL_VERIFYHOST, self.ssl_verify_host)
-
-        if self.ssl_cipher_list is not None:
-            curl.setopt(curl.SSL_CIPHER_LIST, self.ssl_cipher_list)
-
-        curl.setopt(curl.CONNECTTIMEOUT, self.connect_timeout)
-        curl.setopt(curl.TIMEOUT, self.timeout)
-        curl.setopt(curl.TIMEOUT_MS, self.timeout*1000)
-
-        if self.debug is True:
-            curl.setopt(curl.DEBUGFUNCTION, _debug)
-            curl.setopt(curl.VERBOSE, 1)
-
-        if self.username is not None:
-            curl.setopt(curl.USERNAME, self.username)
-
-        if self.password is not None:
-            curl.setopt(curl.PASSWORD, self.password)
-
+    def _parse_data(self, data):
+        # Format Data
         if data is not None:
-            curl.setopt(curl.POSTFIELDS, if_unicode_to_utf8(data))
+            if hasattr(data, 'json'):
+                data = data.json()
+            elif isinstance(data, (dict, list, OrderedDict)):
+                data = js.dumps(data)
+        return if_unicode_to_utf8(data)
+
+    def execute(self, method, url, data=None,
+                headers={}, encode=True, decode=True):
+
+        if encode is True:
+            data = self._parse_data(data)
+
+        host = host_url(url)
+
+        if host in req_session:
+            session = req_session[host]
         else:
-            curl.setopt(curl.POSTFIELDS, if_unicode_to_utf8(''))
+            req_session[host] = requests.Session()
+            session = req_session[host]
 
-        send_headers = list()
-        for header in headers:
-            send_header = if_unicode_to_utf8("%s: %s" % (header,
-                                                                   headers[header]))
-            send_headers.append(send_header)
+        if data is None:
+            data = ''
 
-        curl.setopt(pycurl.HTTPHEADER, send_headers)
+        req = requests.Request(method.upper(),
+                               url,
+                               data=data,
+                               headers=headers)
 
-        if method == const.HTTP_GET:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('GET'))
-        elif method == const.HTTP_PUT:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('PUT'))
-        elif method == const.HTTP_POST:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('POST'))
-        elif method == const.HTTP_PATCH:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('PATCH'))
-        elif method == const.HTTP_DELETE:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('DELETE'))
-        elif method == const.HTTP_OPTIONS:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('OPTIONS'))
-        elif method == const.HTTP_HEAD:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('HEAD'))
-        elif method == const.HTTP_TRACE:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('TRACE'))
-        elif method == const.HTTP_CONNECT:
-            curl.setopt(curl.CUSTOMREQUEST,
-                        if_unicode_to_utf8('CONNECT'))
-        else:
-            raise exceptions.RestClientError("Invalid request type %s" % (method,))
+        session_request = session.prepare_request(req)
+
 
         try:
-            curl.perform()
-            status = curl.getinfo(pycurl.HTTP_CODE)
-        except pycurl.error as e:
-            del curl_session[host]
-            if e[0] == 28:
-                raise exceptions.RestClientError("Connection timeout %s (%s)" % (host,e))
-            else:
-                raise pycurl.error(e)
+            resp = session.send(session_request)
+            _debug(method, url, data, headers, resp.headers,
+                   resp.content, resp.status_code)
+        except requests.ConnectionError as e:
+            raise RestClientError('Connection error %s' % e)
+        except requests.HTTPError as e:
+            raise RestClientError('HTTP error %s' % e)
+        except requests.ConnectTimeout as e:
+            raise RestClientError('Connect timeout %s' % e)
+        except requests.ReadTimeout as e:
+            raise RestClientError('Read timeout %s' % e)
+        except requests.Timeout as e:
+            raise RestClientError('Timeout %s' % e)
 
-        # Figure out what encoding was sent with the response, if any.
-        # Check against lowercased header name.
-        encoding = None
-        if 'content-type' in self.server_headers:
-            content_type = self.server_headers['content-type'].lower()
-            match = re.search('charset=(\S+)', content_type)
-            if match:
-                encoding = match.group(1)
-        if encoding is None:
-            # Default encoding for JSON is UTF-8.
-            # Other content types may have different default encoding,
-            # or in case of binary data, may have no encoding at all.
-            encoding = 'utf_8'
+        if ('content-type' in resp.headers and
+                'application/json' in resp.headers['content-type'].lower() and
+                decode is True):
 
-        body = buffer.getvalue()
-        # Decode using the encoding we figured out.
-        body = body.decode(encoding)
-        resp_header = Headers()
-        for h in self.server_headers:
-            resp_header[h] = self.server_headers[h]
-        return (status, resp_header, body)
+            if resp.encoding.upper() != 'UTF-8':
+                raise RestClientError('JSON requires UTF-8 Encoding')
+
+            try:
+                # Ordered Dict not neccessary..., object_pairs_hook=OrderedDict)
+                # Performance impact.. christiaan.rademan@gmail.com
+                return (resp.status_code,
+                        resp.headers,
+                        js.loads(resp.content))
+            except Exception as e:
+                raise RestClientError('JSON Decode: %s' % e)
+
+        return (resp.status_code,
+                resp.headers,
+                resp.content)
 
     @staticmethod
     def close_all():
-        for session in curl_session:
-            curl_session[session].close()
-            if debug is True:
-                log.debug("Closing session %s" % session)
-        curl_session.clear()
+        for session in req_session:
+            req_session[session].close()
+            log.debug("Closing session %s" % session)
+        req_session.clear()

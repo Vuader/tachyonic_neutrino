@@ -28,17 +28,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
-import json
-import datetime
-from collections import OrderedDict
-from decimal import Decimal
-
-import tachyonic as root
 
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.restclient import RestClient
 from tachyonic.neutrino import constants as const
-from tachyonic.neutrino import exceptions
+from tachyonic.neutrino.exceptions import RestClientError, ClientError
 from tachyonic.neutrino.url import clean_url
 from tachyonic.neutrino.strings import filter_none_text
 
@@ -46,22 +40,8 @@ log = logging.getLogger(__name__)
 
 session = ThreadDict()
 
-if hasattr(root, 'debug'):
-    debug = root.debug
-else:
-    debug = True
-
-
 class Client(RestClient):
-    def __init__(self, url, timeout=1000, debug=debug):
-        # Register Cleanup for use with Neutrino
-        # However Neutrino is not always installed with client...
-        try:
-            import tachyonic.neutrino
-            tachyonic.neutrino.app.register_cleanup(Client.close_all)
-        except:
-            pass
-
+    def __init__(self, url, timeout=1000, debug=False):
         self._endpoints = {}
         self.debug = debug
         self.url = url
@@ -80,48 +60,26 @@ class Client(RestClient):
             self.tachyonic_headers = session[url]['endpoints'] = self.endpoints()
             self._endpoints = session[url]['endpoints']
 
-    def _check_headers(self, server_headers, url):
-        e = "Server not responding with JSON Content-Type %s" % url
-        if 'content-type' in server_headers:
-            if 'json' in server_headers['content-type'].lower():
-                return True
-            else:
-                raise exceptions.ClientError('RESTAPI',
-                                              e,
-                                              const.HTTP_500)
-        else:
-            raise exceptions.ClientError('RESTAPI',
-                                          e,
-                                          const.HTTP_500)
-
     @staticmethod
     def close_all():
         for s in session:
-            if debug is True:
-                log.debug("Closing session %s" % s)
+            log.debug("Closing session %s" % s)
         session.clear()
 
     def endpoints(self):
         url = self.url
         try:
-            server_status, server_headers, server_response = super(Client,
-                                                                   self).execute(const.HTTP_GET,
-                                                                                 url,
-                                                                                 None,
-                                                                                 [])
-            self._check_headers(server_headers, url)
+            status, headers, response = super(Client,
+                                              self).execute(const.HTTP_GET,
+                                              url)
         except Exception as e:
-            raise exceptions.ClientError('RESTAPI Retrieve Endpoints',
-                                          e,
-                                          const.HTTP_500)
-        try:
-            response = json.loads(server_response)
-            self._endpoints = response['external']
-            return self._endpoints
-        except Exception as e:
-            raise exceptions.ClientError('RESTAPI JSON Decode',
-                                          e,
-                                          const.HTTP_500)
+            raise ClientError('Retrieve Endpoints',
+                              e,
+                              const.HTTP_500)
+
+        self._endpoints = response['external']
+
+        return self._endpoints
 
     def authenticate(self, username, password, domain):
         url = self.url
@@ -160,6 +118,7 @@ class Client(RestClient):
         server_headers, result = self.execute("GET", auth_url,
                                               None)
 
+        log.error(result)
         if 'token' in result:
             self.token = token
         else:
@@ -171,6 +130,7 @@ class Client(RestClient):
                 del self.tachyonic_headers['X-Auth-Token']
 
         session[url]['headers'] = self.tachyonic_headers
+
         return result
 
     def domain(self, domain):
@@ -182,54 +142,23 @@ class Client(RestClient):
         else:
             self.tachyonic_headers['X-Tenant-Id'] = tenant
 
-    class _JsonEncoder(json.JSONEncoder):
-        def default(self, o):
-            if isinstance(o, Decimal):
-                # Parse Decimal Value
-                return str(o)
-            elif isinstance(o, datetime.datetime):
-                # Parse Datetime
-                return str(o.strftime("%Y/%m/%d %H:%M:%S"))
-            elif isinstance(o, bytes):
-                return o.decode('utf-8')
-            else:
-                # Pass to Default Encoder
-                return json.JSONEncoder.default(self,o)
-
-    def execute(self, request, url, obj=None, headers=None, endpoint=None):
-        import pycurl
-
-        if obj is not None:
-            # DETECT IF ORM
-            if hasattr(obj, 'Meta'):
-                data = obj.dump_json(indent=4)
-            # DETECT IF REQUEST POST
-            elif hasattr(obj, '_detected_post'):
-                m = {}
-                for field in obj:
-                    m[field] = obj.get(field)
-                data = json.dumps(m, indent=4, cls=self._JsonEncoder)
-            else:
-                log.error(filter_none_text(obj))
-                data = json.dumps(obj, indent=4, cls=self._JsonEncoder)
-        else:
-            data = None
+    def execute(self, method, url,
+                obj=None, headers=None, endpoint=None,
+                encode=True, decode=True):
 
         if endpoint is not None:
             if endpoint in self._endpoints:
                 url = "%s/%s" % (self._endpoints[endpoint], url)
             else:
-                http_status = const.HTTP_404
-                title = "RESTAPI"
-                desc = "Endpoint not found %s" % (endpoint,)
-                raise exceptions.ClientError(title,
-                                             desc,
-                                             http_status)
+                raise ClientError('Endpoint (%s)' % endpoint,
+                                  'Endpoint not found',
+                                  404)
         else:
             if self.url not in url:
                 url = "%s/%s" % (self.url, url)
-        url = clean_url(url)
+            endpoint = "Tachyonic"
 
+        url = clean_url(url)
 
         if headers is None:
             headers = self.tachyonic_headers
@@ -237,44 +166,34 @@ class Client(RestClient):
             headers.update(self.tachyonic_headers)
 
         try:
-            status, server_headers, response = super(Client, self).execute(request, url, data, headers)
-        except pycurl.error as e:
-            raise exceptions.ClientError('RESTAPI CONNECT ERROR',
-                                          e,
-                                          const.HTTP_500)
+            status, headers, response = super(Client,
+                                              self).execute(method,
+                                                            url,
+                                                            obj,
+                                                            headers,
+                                                            encode=encode,
+                                                            decode=decode)
+        except RestClientError as e:
+            raise ClientError('Endpoint (%s):' % endpoint,
+                              e,
+                              500)
 
         if status != 200:
-            if 'content-type' in server_headers:
-                if 'json' in server_headers['content-type'].lower():
-                    if response is not None:
-                        response = json.loads(response,
-                                              object_pairs_hook=OrderedDict)
-                        if 'error' in response:
-                            response = response['error']
-                            f = "HTTP_%s" % (str(status),)
-                            if hasattr(const, f):
-                                http_status = getattr(const, f)
-                            else:
-                                http_status = const.HTTP_500
+            if isinstance(response, dict) and 'error' in response:
+                if 'title' in response['error']:
+                    title = "Endpoint (%s): %s" % (endpoint,
+                                                   response['error']['title'],)
+                else:
+                    title = "Endpoint (%s):" % endpoint
 
-                            title = "RESTAPI: %s" % (response['title'],)
-                            raise exceptions.ClientError(filter_none_text(title),
-                                                         filter_none_text(response['description']),
-                                                         http_status)
 
-        if response is not None:
-            if ('content-type' in server_headers and
-                    'json' not in server_headers['content-type'].lower()):
-                pass
-            else:
-                try:
-                    if response.strip() != '':
-                        response = json.loads(response,
-                                              object_pairs_hook=OrderedDict)
-                    else:
-                        response = None
-                except Exception as e:
-                    raise exceptions.ClientError('RESTAPI JSON Decode',
-                                                  e,
-                                                  const.HTTP_500)
-        return [server_headers, response]
+                if 'description' in response['error']:
+                    description = response['error']['description']
+                else:
+                    description = "Unknown error"
+
+                raise ClientError(filter_none_text(title),
+                                  filter_none_text(description),
+                                  status)
+
+        return [headers, response]

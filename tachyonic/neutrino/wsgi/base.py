@@ -30,12 +30,12 @@
 import os
 import sys
 import logging
-import json
 import traceback
 import signal
 
 from jinja2.exceptions import TemplateNotFound
 
+from tachyonic.neutrino import js
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.imports import import_modules, init_classes
@@ -48,10 +48,10 @@ from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino.wsgi.router import Router
 from tachyonic.neutrino.wsgi.request import Request
 from tachyonic.neutrino.wsgi.response import Response
-from tachyonic.neutrino.redissy import redis
-from tachyonic.neutrino.web.dom import Dom
 from tachyonic.neutrino.policy import Policy
 from tachyonic.neutrino.shrek import Shrek
+from tachyonic.neutrino.restclient import RestClient
+from tachyonic.neutrino.client import Client
 
 log = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ class Base(object):
             policy_file_path = "%s/policy.json" % (self.app_root,)
             if os.path.isfile(policy_file_path):
                 policy_file = open(policy_file_path, 'r')
-                self.policy = json.loads(policy_file.read())
+                self.policy = js.loads(policy_file.read())
                 policy_file.close()
 
             # Monitor Python modules and configs for changes.
@@ -172,6 +172,8 @@ class Base(object):
 
         Shrek.close()
         self.jinja.clean_up()
+        RestClient.close_all()
+        Client.close_all()
         self.logger.stdout.flush()
         sys.stdout.flush()
         sys.stderr.flush()
