@@ -37,7 +37,7 @@ import threading
 
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.ids import random_id
-from tachyonic.neutrino.redissy import redis
+from tachyonic.neutrino.rd import strict as redis
 
 log = logging.getLogger(__name__)
 

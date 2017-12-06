@@ -29,17 +29,17 @@
 
 import logging
 import cgi
-import json
 from urllib import parse as urlparse
 from urllib.parse import quote
 
+from tachyonic.neutrino import js
 from tachyonic.neutrino.exceptions import Error
 from tachyonic.neutrino.wsgi.headers import Headers
 from tachyonic.neutrino.wsgi.cookies import Cookies
 from tachyonic.neutrino.ids import random_id
 from tachyonic.neutrino.wsgi.session import SessionFile
 from tachyonic.neutrino.wsgi.session import SessionRedis
-from tachyonic.neutrino.redissy import redis
+from tachyonic.neutrino.rd import strict as redis
 
 log = logging.getLogger(__name__)
 
@@ -203,7 +203,7 @@ class Request(object):
         """Return JSON Object from request body"""
 
         # JSON requires str not bytes hence decode.
-        return json.loads(self.read().decode('utf-8'))
+        return js.loads(self.read())
 
     def read(self, size=0):
         """Read at most size bytes, returned as a bytes object.
@@ -469,9 +469,21 @@ class Post(object):
         self.override = {}
         self._cgi = cgi.FieldStorage(fp=fp, environ=environ)
 
-    def _detected_post(self):
-        """ DONT REMOVE USED FOR DETECTING OBJECT TYPE """
-        pass
+    def dict(self):
+        """Returns Dict
+        """
+        dictionary = {}
+
+        for field in self:
+            dictionary[field] = self.get(field)
+
+        return dictionary
+
+    def json(self, debug):
+        """Returns JSON
+        """
+        return js.dumps(self.dict(),
+                        debug=debug)
 
     def __setitem__(self, key, value):
         self.override[key] = value

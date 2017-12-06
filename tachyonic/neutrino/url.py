@@ -49,3 +49,7 @@ def clean_url(url):
     cleaned = urlparse.urlunparse(parsed)
 
     return cleaned
+
+def host_url(url):
+    url = urlparse.urlparse(url)
+    return "%s://%s" % (url.scheme, url.netloc)

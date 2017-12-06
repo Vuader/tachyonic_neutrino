@@ -30,8 +30,7 @@
 import logging
 from collections import OrderedDict
 
-import json
-
+from tachyonic.neutrino import js
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino.model import ModelDict
 from tachyonic.neutrino.wsgi import request
@@ -55,7 +54,7 @@ class Base(ModelDict):
                 values[v] = data[v]
         elif isinstance(data, request.Request):
             data = data.read()
-            values = json.loads(data)
+            values = js.loads(data)
         elif isinstance(data, dict):
             values = data
         elif data is None:

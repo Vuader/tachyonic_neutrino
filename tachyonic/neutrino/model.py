@@ -457,7 +457,7 @@ class Field(ObjectName):
                                                  **kwargs)
             return self.list_type(values), end
 
-    def dump_json(self, **kwargs):
+    def json(self, **kwargs):
         return json.dumps(self,
                           cls=self._JsonEncoder,
                           **kwargs)

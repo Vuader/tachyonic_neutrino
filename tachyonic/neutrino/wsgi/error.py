@@ -30,12 +30,12 @@
 import os
 import sys
 import logging
-import json
 import traceback
 import signal
 
 from jinja2.exceptions import TemplateNotFound
 
+from tachyonic.neutrino import js
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.logger import Logger
@@ -46,13 +46,18 @@ log = logging.getLogger(__name__)
 
 class Error(object):
     def _error_template(self, req, code):
-        # Scan for Custom Error templates.
-        for module in self.modules:
-            try:
+        # Look for Custom Error templates.
+        try:
+            if req.is_ajax():
+                t = self.jinja.get_template("%s_ajax.html" % (code))
+            else:
                 t = self.jinja.get_template("%s.html" % (code))
-                return t
-            except TemplateNotFound:
-                pass
+            return t
+        except TemplateNotFound:
+            pass
+
+        for module in self.modules:
+            # Scan for Error templates.
             try:
                 if req.is_ajax():
                     t = self.jinja.get_template("%s/%s_ajax.html" % (module, code))
@@ -60,7 +65,6 @@ class Error(object):
                 else:
                     t = self.jinja.get_template("%s/%s.html" % (module, code))
                     return t
-
             except TemplateNotFound:
                 pass
 
@@ -74,12 +78,7 @@ class Error(object):
             if hasattr(e, 'status'):
                 resp.status = e.status
             else:
-                resp.status = const.HTTP_500
-
-            if hasattr(e, 'code'):
-                code = e.code
-            else:
-                code = resp.status.split(" ")[0]
+                resp.status = 500
 
             if hasattr(e, 'title'):
                 title = e.title
@@ -93,8 +92,7 @@ class Error(object):
         else:
             title = const.HTTP_500
             description = repr(e)
-            code = 500
-            resp.status = const.HTTP_500
+            resp.status = 500
 
         resp.clear()
         if resp.headers.get('Content-Type') == const.TEXT_PLAIN:
@@ -103,7 +101,7 @@ class Error(object):
             if description is not None:
                 resp.write("%s" % (description,))
         elif resp.headers.get('Content-Type') == const.TEXT_HTML:
-            t = self._error_template(req, code)
+            t = self._error_template(req, resp.status)
             if t is not None:
                 resp.body = t.render(title=title, description=description)
             else:
@@ -120,9 +118,9 @@ class Error(object):
                     h2 = body.create_element('h2')
                     h2.append(description)
                 resp.body = dom.get()
-        elif resp.headers.get('Content-Type') == const.APPLICATION_JSON:
+        elif 'application/json' in resp.headers.get('Content-Type').lower():
             j = {'error': {'title': title, 'description': description}}
-            resp.body = json.dumps(j, indent=4)
+            resp.body = js.dumps(j)
         else:
             if title is not None:
                 resp.write("%s\n" % (title,))

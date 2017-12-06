@@ -33,6 +33,7 @@ from tachyonic import app
 
 from tachyonic.neutrino import Client
 from tachyonic.neutrino import exceptions
+from tachyonic.neutrino import constants as const
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class Token(object):
         self.interface = interface
 
     def pre(self, req, resp):
-        resp.headers['content-type'] = 'application/json; charset=UTF-8'.encode('utf-8')
+        resp.content_type = const.APPLICATION_JSON
         req.context['token'] = None
         req.context['email'] = None
         req.context['username'] = None

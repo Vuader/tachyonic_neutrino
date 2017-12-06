@@ -58,7 +58,7 @@ def _log(db, msg, debug=False, elapsed=0):
     """
     if debug is True:
         log_msg = (msg +
-                   "(%s,%s,%s) (DURATION: %.4fs)" %
+                   " (%s,%s,%s) (DURATION: %.4fs)" %
                    (db.get_server_info(),
                     db.get_host_info(),
                     db.thread_id,
