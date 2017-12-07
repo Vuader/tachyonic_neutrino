@@ -99,8 +99,6 @@ def hash(password, algo=const.BLOWFISH, rounds=15):
     return hashed
 
 
-
-
 def valid(password, hashed):
     """ Validate password against hash.
 

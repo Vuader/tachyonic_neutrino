@@ -49,7 +49,7 @@ from tachyonic.neutrino.wsgi.base import Base
 from tachyonic.neutrino.wsgi.error import Error
 from tachyonic.neutrino.wsgi.request import Request
 from tachyonic.neutrino.wsgi.response import Response
-from tachyonic.neutrino.wsgi.headers import status_codes
+from tachyonic.neutrino.http.headers import status_codes
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +67,6 @@ class Wsgi(Base, Error):
             template.Jinja.get_template(template)
         render_template: Short cut Render Jinja Template.
             template.Jinja.render_template(template, \**kwargs)
-        debug: Boolean if debug is enabled.
         logger: Logger Object - Tachyon Logging Facility Manager.
         context: Application Context - Per process
         policy: Policy Engine Object
@@ -96,9 +95,7 @@ class Wsgi(Base, Error):
             # MYSQL Application Database
             mysql_config = self.config.get('mysql')
             if mysql_config.get('database') is not None:
-                mysql_params = mysql_config.dict()
-                mysql_params['debug'] = self.debug
-                Mysql(**mysql_params)
+                Mysql(**mysql_config.dict())
 
             # Redis
             redis_config = self.config.get('redis')
@@ -110,7 +107,7 @@ class Wsgi(Base, Error):
             resp = Response(req)
 
             # Debug Request logging
-            if self.debug is True:
+            if log.getEffectiveLevel() <= logging.DEBUG:
                 log.debug("Request URI: %s" % (req.get_full_path()))
                 log.debug("Request QUERY: %s" % (req.environ['QUERY_STRING'],))
 
@@ -175,7 +172,7 @@ class Wsgi(Base, Error):
                         m.post(req, resp)
 
             except exceptions.HTTPError as e:
-                if self.debug is True:
+                if log.getEffectiveLevel() <= logging.DEBUG:
                     trace = str(traceback.format_exc())
                     log.debug("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
@@ -184,7 +181,7 @@ class Wsgi(Base, Error):
                 log.error("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
 
-            # Clean Proces
+            # Clean Process
             self._cleanup()
 
             # Save Client Session
@@ -221,5 +218,5 @@ class Wsgi(Base, Error):
             except:
                 pass
 
-            if self.debug is True:
+            if log.getEffectiveLevel() <= logging.DEBUG:
                 os.kill(os.getpid(), signal.SIGINT)

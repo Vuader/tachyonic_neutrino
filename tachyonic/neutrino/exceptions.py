@@ -30,7 +30,7 @@
 import logging
 
 from tachyonic.neutrino import constants as const
-from tachyonic.neutrino.wsgi.headers import status_codes
+from tachyonic.neutrino.http.headers import status_codes
 
 log = logging.getLogger(__name__)
 

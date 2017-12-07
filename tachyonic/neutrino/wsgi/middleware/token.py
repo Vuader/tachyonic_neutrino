@@ -29,9 +29,8 @@
 
 import logging
 
-from tachyonic import app
-
-from tachyonic.neutrino import Client
+from tachyonic.neutrino.wsgi import app
+from tachyonic.neutrino.client import Client
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino import constants as const
 

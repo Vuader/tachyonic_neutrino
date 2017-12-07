@@ -32,9 +32,10 @@ import datetime
 
 from io import StringIO, BytesIO
 
+from tachyonic.neutrino import __version__
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino import constants as const
-from tachyonic.neutrino.wsgi.headers import Headers
+from tachyonic.neutrino.http.headers import Headers
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.dt import Datetime
 from tachyonic.neutrino.wsgi import router
@@ -267,7 +268,8 @@ class Response(object):
 
         # Default Headers
         self.content_type = const.TEXT_HTML
-        self.headers['X-Powered-By'] = 'Tachyonic'
+        self.headers['X-Powered-By'] = ('Tachyonic Neutrino %s Framework' %
+                                        __version__)
         self.headers['X-Request-ID'] = self._req.request_id
 
         # CACHING

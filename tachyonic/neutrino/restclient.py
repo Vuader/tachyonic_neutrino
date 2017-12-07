@@ -31,13 +31,13 @@ import logging
 import requests
 from collections import OrderedDict
 
-from tachyonic.neutrino.wsgi.headers import status_codes
+from tachyonic.neutrino import __version__
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.validate import is_text
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.exceptions import RestClientError
-from tachyonic.neutrino.wsgi.headers import Headers
+from tachyonic.neutrino.http.headers import status_codes, Headers
 from tachyonic.neutrino.url import host_url
 from tachyonic.neutrino import js
 
@@ -71,20 +71,38 @@ def _debug(method, url, payload, request_headers, response_headers,
             log.debug('Response Payload: BINARY')
 
 class RestClient(object):
-    def __init__(self, read_timeout=30, connect_timeout=2,
-                 username=None, password=None, ssl_verify=True,
-                ):
+    """HTTP Python Requests Wrapper.
 
-        self.username = username
-        self.password = password
+    Provided for convienace to using RESTful API.
 
-        self.read_timeout = read_timeout
-        self.connect_timeout = connect_timeout
+    Keeps connection to specfici host, port open and acts like a singleton
+    providing each thread continues request apabilities without reconnecting.
 
-        self.ssl_verify = ssl_verify
+    Args:
+        timeout (float/tuple): How many seconds to wait for the server to send
+            data before giving up, as a float, or a (connect timeout, read
+            read timeout) tuple. Defaults to (8, 2) (optional)
+        auth (tuple): Auth tuple to enable Basic/Digest/Custom HTTP Auth.
+            ('username', 'password' ) pair.
+        verify (str/bool): Either a boolean, in which case it controls whether
+            we verify the server's TLS certificate, or a string, in which case
+            it must be a path to a CA bundle to use. Defaults to True.
+            (optional)
+        cert (str/tuple): if String, path to ssl client cert file (.pem). If
+            Tuple, ('cert', 'key') pair.
+    """
+    def __init__(self, timeout=(8, 2),
+                 auth=None, verify=True,
+                 cert=None):
+
+        self.auth = auth
+        self.timeout = (30, 2)
+        self.verify = verify
+        self.cert = cert
 
     def _parse_data(self, data):
-        # Format Data
+        """Format Data for request body.
+        """
         if data is not None:
             if hasattr(data, 'json'):
                 data = data.json()
@@ -95,7 +113,42 @@ class RestClient(object):
 
     def execute(self, method, url, data=None,
                 headers={}, encode=True, decode=True):
+        """Execute Request.
 
+        Args:
+            method (str): method for the request.
+                * GET - The GET method requests a representation of the
+                  specified resource. Requests using GET should only
+                  retrieve data.
+                * POST - The POST method is used to submit an entity to the
+                  specified resource, often causing a change in state or side
+                  effects on the server
+                * PUT - The PUT method replaces all current representations of
+                  the target resource with the request payload.
+                * PATCH - The PATCH method is used to apply partial
+                  modifications to a resource.
+                * DELETE - The DELETE method deletes the specified resource.
+                * HEAD - The HEAD method asks for a response identical to
+                  that of a GET request, but without the response body.
+                * CONNECT - The CONNECT method establishes a tunnel to the
+                  server identified by the target resource.
+                * OPTIONS - The OPTIONS method is used to describe the
+                  communication options for the target resource.
+                * TRACE - The TRACE method performs a message loop-back test
+                  along the path to the target resource.
+            url (str): URL for the new request.
+            data (obj): str, dict or list to be converted to JSON if encode is
+                True. Otherwise sent as clear text. Objects with json method
+                will be used to return json.
+            headers (dict): HTTP Headers to send with the request.
+            encode (bool): Encode request body as JSON where possible.
+            decode (bool): Decode response body as JSON where possible.
+
+        Response body will be string unless json data is decoded either
+        a list or dict will be returned.
+
+        Returns tuple (status code, respone headers, response body)
+        """
         if encode is True:
             data = self._parse_data(data)
 
@@ -112,20 +165,24 @@ class RestClient(object):
         if data is None:
             data = ''
 
+        headers['User-Agent'] = 'Tachyonic Neutrino v%s (RESTful API Client)' % __version__
+        headers['Content-Length'] = str(len(data))
         req = requests.Request(method.upper(),
                                url,
                                data=data,
-                               headers=headers)
+                               headers=headers,
+                               auth=self.auth)
 
         session_request = session.prepare_request(req)
 
         try:
             resp = session.send(session_request,
-                                timeout=(self.connect_timeout,
-                                         self.read_timeout),
-                                verify=self.ssl_verify)
+                               timeout=self.timeout,
+                               verify=self.verify,
+                               cert=self.cert)
             _debug(method, url, data, headers, resp.headers,
                    resp.content, resp.status_code)
+
         except requests.ConnectionError as e:
             raise RestClientError('Connection error %s' % e)
         except requests.HTTPError as e:
@@ -162,6 +219,8 @@ class RestClient(object):
 
     @staticmethod
     def close_all():
+        """Close all sessions for thread.
+        """
         for session in req_session:
             req_session[session].close()
             log.debug("Closing session: %s" % session)
