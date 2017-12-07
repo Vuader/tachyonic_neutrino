@@ -41,21 +41,20 @@ log = logging.getLogger(__name__)
 session = ThreadDict()
 
 class Client(RestClient):
-    def __init__(self, url, timeout=1000, debug=False):
+    def __init__(self, url, **kwargs):
         self._endpoints = {}
-        self.debug = debug
         self.url = url
 
         if url in session and 'endpoints' in session[url]:
             log.debug("Using existing session %s" % url)
             self.tachyonic_headers = session[url]['headers']
             self._endpoints = session[url]['endpoints']
-            super(Client, self).__init__(timeout=timeout, debug=debug)
+            super(Client, self).__init__(**kwargs)
         else:
-            log.debug("New session %s" % url)
+            log.debug("New session: %s" % url)
             session[url] = {}
             session[url]['headers'] = {}
-            super(Client, self).__init__(timeout=timeout, debug=debug)
+            super(Client, self).__init__(**kwargs)
             self.tachyonic_headers = session[url]['headers']
             self.tachyonic_headers = session[url]['endpoints'] = self.endpoints()
             self._endpoints = session[url]['endpoints']
@@ -63,7 +62,7 @@ class Client(RestClient):
     @staticmethod
     def close_all():
         for s in session:
-            log.debug("Closing session %s" % s)
+            log.debug("Closing session: %s" % s)
         session.clear()
 
     def endpoints(self):
@@ -75,7 +74,7 @@ class Client(RestClient):
         except Exception as e:
             raise ClientError('Retrieve Endpoints',
                               e,
-                              const.HTTP_500)
+                              500)
 
         self._endpoints = response['external']
 

@@ -31,6 +31,7 @@ import logging
 import requests
 from collections import OrderedDict
 
+from tachyonic.neutrino.wsgi.headers import status_codes
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.validate import is_text
@@ -45,11 +46,12 @@ log = logging.getLogger(__name__)
 req_session = ThreadDict()
 
 def _debug(method, url, payload, request_headers, response_headers,
-           response, status):
+           response, status_code):
     if log.getEffectiveLevel() <= logging.DEBUG:
-        log.debug('Method: %s, URL: %s (%s)' % (method,
+        log.debug('Method: %s, URL: %s (%s %s)' % (method,
                                                 url,
-                                                status))
+                                                status_code,
+                                                status_codes[status_code]))
         log.debug('Request Headers: %s' % request_headers)
         log.debug('Response Headers: %s' % response_headers)
         if is_text(payload):
@@ -69,36 +71,17 @@ def _debug(method, url, payload, request_headers, response_headers,
             log.debug('Response Payload: BINARY')
 
 class RestClient(object):
-    def __init__(self, ssl_verify=False, ssl_verify_peer=True,
-                 ssl_verify_host=True, ssl_cacert=None,
-                 ssl_cainfo=None, timeout=30, connect_timeout=2,
-                 ssl_cipher_list = None, username=None, password=None,
-                 debug=False):
+    def __init__(self, read_timeout=30, connect_timeout=2,
+                 username=None, password=None, ssl_verify=True,
+                ):
 
-
-        self.ssl_cipher_list = ssl_cipher_list
         self.username = username
         self.password = password
-        self.debug = debug
 
-        if ssl_verify is True:
-            if ssl_verify_peer is True:
-                self.ssl_verify_peer = 1
-            else:
-                self.ssl_verify_peer = 0
-
-            if ssl_verify_host is True:
-                self.ssl_verify_host = 2
-            else:
-                self.ssl_verify_host = 0
-        else:
-                self.ssl_verify_peer = 0
-                self.ssl_verify_host = 0
-
-        self.ssl_cacert = ssl_cacert
-        self.ssl_cainfo = ssl_cainfo
-        self.timeout = timeout
+        self.read_timeout = read_timeout
         self.connect_timeout = connect_timeout
+
+        self.ssl_verify = ssl_verify
 
     def _parse_data(self, data):
         # Format Data
@@ -107,6 +90,7 @@ class RestClient(object):
                 data = data.json()
             elif isinstance(data, (dict, list, OrderedDict)):
                 data = js.dumps(data)
+
         return if_unicode_to_utf8(data)
 
     def execute(self, method, url, data=None,
@@ -118,8 +102,10 @@ class RestClient(object):
         host = host_url(url)
 
         if host in req_session:
+            log.debug("Using existing session: %s" % host)
             session = req_session[host]
         else:
+            log.debug("New session: %s" % host)
             req_session[host] = requests.Session()
             session = req_session[host]
 
@@ -133,9 +119,11 @@ class RestClient(object):
 
         session_request = session.prepare_request(req)
 
-
         try:
-            resp = session.send(session_request)
+            resp = session.send(session_request,
+                                timeout=(self.connect_timeout,
+                                         self.read_timeout),
+                                verify=self.ssl_verify)
             _debug(method, url, data, headers, resp.headers,
                    resp.content, resp.status_code)
         except requests.ConnectionError as e:
@@ -157,8 +145,6 @@ class RestClient(object):
                 raise RestClientError('JSON requires UTF-8 Encoding')
 
             try:
-                # Ordered Dict not neccessary..., object_pairs_hook=OrderedDict)
-                # Performance impact.. christiaan.rademan@gmail.com
                 return (resp.status_code,
                         resp.headers,
                         js.loads(resp.content))
@@ -173,5 +159,5 @@ class RestClient(object):
     def close_all():
         for session in req_session:
             req_session[session].close()
-            log.debug("Closing session %s" % session)
+            log.debug("Closing session: %s" % session)
         req_session.clear()
