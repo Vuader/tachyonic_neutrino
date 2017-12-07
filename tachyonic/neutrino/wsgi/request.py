@@ -201,9 +201,10 @@ class Request(object):
 
     def json(self, size=0):
         """Return JSON Object from request body"""
+        if not hasattr(self, '_json'):
+            self._json = self.read()
 
-        # JSON requires str not bytes hence decode.
-        return js.loads(self.read())
+        return js.loads(self._json)
 
     def read(self, size=0):
         """Read at most size bytes, returned as a bytes object.
