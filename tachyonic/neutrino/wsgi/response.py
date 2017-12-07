@@ -393,7 +393,6 @@ class Response(object):
         Args:
             url (str): Redirected to URL.
         """
-        self.clear()
         http_see_other(url, self._req, self)
 
     def wsgi_headers(self):

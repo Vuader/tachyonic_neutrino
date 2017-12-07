@@ -204,7 +204,8 @@ class Wsgi(Base, Error):
                         _start_response()
                         return returned
                     else:
-                        resp.status = 204
+                        if resp.status == 200:
+                            resp.status = 204
                         resp.write('')
                         _start_response()
                         return resp

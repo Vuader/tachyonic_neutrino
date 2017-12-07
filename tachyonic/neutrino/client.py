@@ -145,7 +145,7 @@ class Client(RestClient):
 
         return result
 
-    def token(self, token, domain, tenant_id=None):
+    def token(self, token, domain='default', tenant_id=None):
         """Authenticate using Token.
 
         Once authenticated execute will be processed using the context
@@ -160,6 +160,9 @@ class Client(RestClient):
         """
         auth_url = "%s/v1/token" % (self._url,)
 
+        self._tachyonic_headers['X-Domain'] = domain
+        self._tachyonic_headers['X-Auth-Token'] = token
+
         if tenant_id is not None:
             self._tachyonic_headers['X-Tenant-Id'] = tenant_id
         elif 'X-Tenant-Id' in self._tachyonic_headers:
@@ -169,8 +172,6 @@ class Client(RestClient):
 
         if 'token' in result:
             self.token = token
-            self._tachyonic_headers['X-Domain'] = domain
-            self._tachyonic_headers['X-Auth-Token'] = token
         else:
             if 'X-Tenant-Id' in self._tachyonic_headers:
                 del self._tachyonic_headers['X-Tenant-Id']
