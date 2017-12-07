@@ -184,7 +184,7 @@ class Wsgi(Base, Error):
                 log.error("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
 
-            # Clean Proces
+            # Clean Process
             self._cleanup()
 
             # Save Client Session
