@@ -32,7 +32,7 @@ import re
 import keyword
 
 from tachyonic.neutrino.wsgi.routing import CompiledRouter
-from tachyonic.neutrino.exceptions import HTTPNotFound
+from tachyonic.neutrino.exceptions import HTTPNotFound, DoesNotExist
 
 log = logging.getLogger(__name__)
 
@@ -101,6 +101,26 @@ class Router(object):
         """
         uri = req.environ['PATH_INFO'].strip('/')
         return self._falcon[req.method].find(uri)
+
+    def find(self, method, uri):
+        """Route based on Request Object.
+
+        Search for a route that matches the given partial URI.
+
+        Args:
+            method (str): HTTP Method. Use constants in
+                tachyonic.neutrion.constants.
+                * GET
+                * POST
+                * PUT
+                * PATCH
+                * DELETE
+            uri (str): The requested path to route.
+        """
+        if method in self._falcon:
+            return self._falcon[method].find(uri)
+        else:
+            raise DoesNotExist(description = "Method %s not found")
 
     def add(self, methods, route, obj, name=None):
         """Add route to view.
