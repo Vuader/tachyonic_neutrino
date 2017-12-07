@@ -33,6 +33,7 @@ import keyword
 
 from tachyonic.neutrino.wsgi.routing import CompiledRouter
 from tachyonic.neutrino.exceptions import HTTPNotFound, DoesNotExist
+from tachyonic.neutrino.timer import timer
 
 log = logging.getLogger(__name__)
 
@@ -53,8 +54,7 @@ def view(uri, method, req, resp):
         resp (object): Response Object.
     """
     req.method = method
-    method = method.upper()
-    r = req.router._falcon[method].find(uri)
+    r = req.router.find(method, uri)
     if r is not None:
         obj, methods, obj_kwargs, route, name = r
         return obj(req, resp, **obj_kwargs)
@@ -100,7 +100,10 @@ class Router(object):
         Returns view based on url and method in request object.
         """
         uri = req.environ['PATH_INFO'].strip('/')
-        return self._falcon[req.method].find(uri)
+        result = self.find(req.method, uri)
+
+        return result
+
 
     def find(self, method, uri):
         """Route based on Request Object.
@@ -117,10 +120,27 @@ class Router(object):
                 * DELETE
             uri (str): The requested path to route.
         """
-        if method in self._falcon:
-            return self._falcon[method].find(uri)
-        else:
-            raise DoesNotExist(description = "Method %s not found")
+        with timer() as elapsed:
+            method = method.upper()
+            if method in self._falcon:
+                result = self._falcon[method].find(uri)
+                if result is not None:
+                    obj, method, obj_kwargs, route, name = result
+
+                    log.debug('Routed: /%s' % uri +
+                              ' Method: %s' % method +
+                              ' View: %s' % obj +
+                              ' Name: %s' % name +
+                              ' Kwargs %s' % obj_kwargs +
+                              ' (DURATION: %.4fs)' % elapsed())
+                    return result
+                else:
+                    log.debug('Routed: /%s' % uri +
+                              ' Methods: %s' % method +
+                              ' View: Not found' +
+                              ' Name: Not found' +
+                              ' Kwargs {}' +
+                              ' (DURATION: %.4fs)' % elapsed())
 
     def add(self, methods, route, obj, name=None):
         """Add route to view.
@@ -160,3 +180,8 @@ class Router(object):
 
         for method in methods:
             self._falcon[method].add_route(route, method, obj, name)
+
+        log.debug('Added Route: %s' % route +
+                  ' Methods: %s' % methods +
+                  ' View: %s' % obj +
+                  ' Name: %s' % name)
