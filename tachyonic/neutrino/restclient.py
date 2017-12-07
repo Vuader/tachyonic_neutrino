@@ -145,9 +145,14 @@ class RestClient(object):
                 raise RestClientError('JSON requires UTF-8 Encoding')
 
             try:
-                return (resp.status_code,
-                        resp.headers,
-                        js.loads(resp.content))
+                if resp.status_code != 204:
+                    return (resp.status_code,
+                            resp.headers,
+                            js.loads(resp.content))
+                else:
+                    return (resp.status_code,
+                            resp.headers,
+                            b'')
             except Exception as e:
                 raise RestClientError('JSON Decode: %s' % e)
 

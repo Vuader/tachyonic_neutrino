@@ -245,7 +245,7 @@ class Response(object):
 
     The Response object represents the application’s HTTP response to the
     request. It provides properties and methods for setting status, header
-    and body data. 
+    and body data.
 
     Args:
         req (Request): Request Object.
