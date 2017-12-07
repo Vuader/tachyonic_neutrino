@@ -32,6 +32,27 @@ import sys
 from tachyonic.neutrino.validate import is_text
 
 
+def list_of_lines(text):
+    """Parse Text newlines into list.
+
+    Safely parses strings into list. Filters Binary.
+
+    Args:
+        string (str/bytes): Text
+
+    Returns list
+    """
+    lst = []
+
+    if is_text(text):
+        if isinstance(text, bytes):
+            text = text.decode('UTF-8')
+        for line in text.split('\n'):
+            lst.append(line)
+        return lst
+    else:
+        return [ 'BINARY' ]
+
 def filter_none_text(string):
     """Parse String and filter Binary
 

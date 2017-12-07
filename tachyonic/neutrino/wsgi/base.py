@@ -52,6 +52,7 @@ from tachyonic.neutrino.policy import Policy
 from tachyonic.neutrino.shrek import Shrek
 from tachyonic.neutrino.restclient import RestClient
 from tachyonic.neutrino.client import Client
+from tachyonic.neutrino.timer import timer
 
 log = logging.getLogger(__name__)
 
@@ -108,40 +109,43 @@ class Base(object):
                              level=log_level,
                              log_file=log_config.get('file', None))
 
-            log.info("STARTING APPLICATION PROCESS FOR %s" % (self.app_name,))
+            log.info("STARTING %s PROCESS" % self.app_name)
 
-            # Load Policy if exists
-            policy_file_path = "%s/policy.json" % (self.app_root,)
-            if os.path.isfile(policy_file_path):
-                policy_file = open(policy_file_path, 'r')
-                self.policy = js.loads(policy_file.read())
-                policy_file.close()
+            with timer() as elapsed:
+                # Load Policy if exists
+                policy_file_path = "%s/policy.json" % (self.app_root,)
+                if os.path.isfile(policy_file_path):
+                    policy_file = open(policy_file_path, 'r')
+                    self.policy = js.loads(policy_file.read())
+                    policy_file.close()
 
-            # Monitor Python modules and configs for changes.
-            # If change detected kill myself... only while debug is enabled.
-            # This makes it easier to do development...
-            if log.getEffectiveLevel() <= logging.DEBUG:
-                restart.start(interval=1.0)
-                restart.track(config_file_path)
-                restart.track(policy_file_path)
+                # Monitor Python modules and configs for changes.
+                # If change detected kill myself... only while debug is enabled.
+                # This makes it easier to do development...
+                if log.getEffectiveLevel() <= logging.DEBUG:
+                    restart.start(interval=1.0)
+                    restart.track(config_file_path)
+                    restart.track(policy_file_path)
 
-            # Load/Import modules
-            self.app_config.get_items('modules')
-            modules = self.app_config.get_items('modules')
-            self.modules = import_modules(modules)
+                # Load/Import modules
+                self.app_config.get_items('modules')
+                modules = self.app_config.get_items('modules')
+                self.modules = import_modules(modules)
 
-            # Load Jinja Templates - Can only be performed after module import.
-            # If done before you get poorly handled error messages.
-            # Because jinja also trieds to import above moodules.
-            self.jinja.load_templates(modules, "%s/templates" % app_root)
+                # Load Jinja Templates - Can only be performed after module import.
+                # If done before you get poorly handled error messages.
+                # Because jinja also trieds to import above moodules.
+                self.jinja.load_templates(modules, "%s/templates" % app_root)
 
-            # Load Middleware - at this point modules should
-            # already be imported.
-            middleware = self.app_config.get_items('middleware')
-            self.middleware = init_classes(middleware)
+                # Load Middleware - at this point modules should
+                # already be imported.
+                middleware = self.app_config.get_items('middleware')
+                self.middleware = init_classes(middleware)
 
-            # Return WSGI Callable Interface
-            return self.interface
+                log.debug("STARTED %s PROCESS (DURATION: %.4fs)" %
+                          (self.app_name, elapsed()))
+                # Return WSGI Callable Interface
+                return self.interface
 
         except Exception as e:
             trace = str(traceback.format_exc())

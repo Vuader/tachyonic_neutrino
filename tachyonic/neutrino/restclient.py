@@ -36,6 +36,7 @@ from tachyonic.neutrino import __version__
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.validate import is_text
+from tachyonic.neutrino.strings import list_of_lines
 from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.exceptions import RestClientError
 from tachyonic.neutrino.http.headers import status_codes, Headers
@@ -56,21 +57,12 @@ def _debug(method, url, payload, request_headers, response_headers,
                   ' (DURATION: %.4fs)' % elapsed)
         log.debug('Request Headers: %s' % request_headers)
         log.debug('Response Headers: %s' % response_headers)
-        if is_text(payload):
-            if isinstance(payload, bytes):
-                payload = payload.decode('UTF-8')
-            payload = payload.split('\n')
-            for l, p in enumerate(payload):
-                log.debug('Request Payload (%s): %s' % (l, p))
-        else:
-            log.debug('Request Payload: BINARY')
 
-        if is_text(response):
-            response = response.decode('UTF-8').split('\n')
-            for l, p in enumerate(response):
-                log.debug('Response Payload (%s): %s' % (l, p))
-        else:
-            log.debug('Response Payload: BINARY')
+        for l, p in enumerate(list_of_lines(payload)):
+            log.debug('Request Payload (%s): %s' % (l, p))
+
+        for l, p in enumerate(list_of_lines(response)):
+            log.debug('Response Payload (%s): %s' % (l, p))
 
 class RestClient(object):
     """HTTP Python Requests Wrapper.
