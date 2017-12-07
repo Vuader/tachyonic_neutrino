@@ -9,3 +9,4 @@ gunicorn==19.7.0
 tzlocal
 pycurl
 pytz
+requests
