@@ -35,6 +35,7 @@ import datetime
 
 import pymysql as MySQLdb
 import pymysql.cursors as cursors
+from pymysql.constants import COMMAND
 
 from tachyonic.neutrino.shrek import Shrek
 from tachyonic.neutrino.timer import timer
@@ -83,6 +84,7 @@ class MysqlWrapper(object):
     def __init__(self, name='default', host=None, username=None,
                  password=None, database=None):
         self.name = name
+        self.utc_tz = False
 
         self.db = _connect(host=host,
                            username=username, password=password,
@@ -93,8 +95,11 @@ class MysqlWrapper(object):
         self.locks = False
 
     def ping(self):
-        """Check if the server is alive"""
-        self.db.ping(True)
+        """Check if the server is alive.
+
+        Auto-Reconnect if not, and return false when reconnecting.
+        """
+        return _ping(self.db)
 
     def close(self):
         """Close Server Session.
@@ -256,11 +261,13 @@ def Mysql(name='default', host=None, username=None,
                               database=database)
 
     # PING AND RECONNECT
-    mysql_wrapper.ping()
+    ping = mysql_wrapper.ping()
 
     # SET TO UTC TIMEZONE
     # specifically to SQL query based functions such as now()
-    mysql_wrapper.execute('SET time_zone = %s', '+00:00')
+    if ping is False or mysql_wrapper.utc_tz is False:
+        mysql_wrapper.execute('SET time_zone = %s', '+00:00')
+        mysql_wrapper.utc_tz = True
 
     return mysql_wrapper
 
@@ -436,3 +443,20 @@ def _rollback(db):
     with timer() as elapsed:
         db.rollback()
         _log(db, "Rollback", elapsed())
+
+def _ping(db):
+        """Check if the server is alive.
+
+        Auto-Reconnect if not, and return false when reconnecting.
+        """
+        if db._sock is None:
+            db.connect()
+            return False
+        else:
+            try:
+                db._execute_command(COMMAND.COM_PING, "")
+                db._read_ok_packet()
+                return True
+            except Exception:
+                db.connect()
+                return False
