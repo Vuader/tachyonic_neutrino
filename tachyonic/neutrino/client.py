@@ -29,7 +29,7 @@
 
 import logging
 
-from tachyonic.neutrino.wsgi.headers import status_codes
+from tachyonic.neutrino.http.headers import status_codes
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.restclient import RestClient
 from tachyonic.neutrino import constants as const
@@ -42,6 +42,30 @@ log = logging.getLogger(__name__)
 session = ThreadDict()
 
 class Client(RestClient):
+    """Tachyonic RestApi Client.
+
+    Client wrapped around RestClient using python requests.
+
+    Provided for convienace to using RESTful API.
+
+    Provides simple authentication methods and tracks endpoints.
+    Keeps connection to specfici host, port open and acts like a singleton
+    providing each thread continues request apabilities without reconnecting.
+
+    Args:
+        url (str): URL of Tachyonic main endpoint API.
+        timeout (float/tuple): How many seconds to wait for the server to send
+            data before giving up, as a float, or a (connect timeout, read
+            read timeout) tuple. Defaults to (8, 2) (optional)
+        auth (tuple): Auth tuple to enable Basic/Digest/Custom HTTP Auth.
+            ('username', 'password' ) pair.
+        verify (str/bool): Either a boolean, in which case it controls whether
+            we verify the server's TLS certificate, or a string, in which case
+            it must be a path to a CA bundle to use. Defaults to True.
+            (optional)
+        cert (str/tuple): if String, path to ssl client cert file (.pem). If
+            Tuple, ('cert', 'key') pair.
+    """
     def __init__(self, url, **kwargs):
         self._endpoints = {}
         self.url = url
@@ -62,6 +86,8 @@ class Client(RestClient):
 
     @staticmethod
     def close_all():
+        """Close all sessions for thread.
+        """
         for s in session:
             log.debug("Closing session: %s" % s)
         session.clear()
@@ -82,6 +108,18 @@ class Client(RestClient):
         return self._endpoints
 
     def authenticate(self, username, password, domain):
+        """Authenticate using credentials.
+
+        Once authenticated execute will be processed using the context
+        relative to user credentials.
+
+        Args:
+            username (str): Username.
+            password (str): Password.
+            domain (str): Name of domain for context.
+
+        Returns authenticated result.
+        """
         url = self.url
         auth_url = "%s/v1/token" % (url,)
 
@@ -106,19 +144,32 @@ class Client(RestClient):
         session[url]['headers'] = self.tachyonic_headers
         return result
 
-    def token(self, token, domain, tenant_id):
+    def token(self, token, domain, tenant_id=None):
+        """Authenticate using Token.
+
+        Once authenticated execute will be processed using the context
+        relative to user credentials.
+
+        Args:
+            token (str): Token Key.
+            domain (str): Name of domain for context.
+            tenant_id (str): Tenant id for context. (optional)
+
+        Returns authenticated result.
+        """
         url = self.url
         auth_url = "%s/v1/token" % (url,)
 
         if tenant_id is not None:
             self.tachyonic_headers['X-Tenant-Id'] = tenant_id
+        else:
+            del self.tachyonic_headers['X-Tenant-Id']
+
         self.tachyonic_headers['X-Domain'] = domain
         self.tachyonic_headers['X-Auth-Token'] = token
 
-        server_headers, result = self.execute("GET", auth_url,
-                                              None)
+        headers, result = self.execute("GET", auth_url)
 
-        log.error(result)
         if 'token' in result:
             self.token = token
         else:
@@ -134,31 +185,71 @@ class Client(RestClient):
         return result
 
     def domain(self, domain):
+        """Set context of domain name.
+        """
         self.tachyonic_headers['X-Domain'] = domain
 
     def tenant(self, tenant):
+        """Set context of tenant unique id.
+        """
         if tenant is None:
             del self.tachyonic_headers['X-Tenant-Id']
         else:
             self.tachyonic_headers['X-Tenant-Id'] = tenant
 
-    def execute(self, method, url,
+    def execute(self, method, resource,
                 obj=None, headers=None, endpoint=None,
                 encode=True, decode=True):
+        """Execute Request.
+
+        Args:
+            method (str): method for the request.
+                * GET - The GET method requests a representation of the
+                  specified resource. Requests using GET should only
+                  retrieve data.
+                * POST - The POST method is used to submit an entity to the
+                  specified resource, often causing a change in state or side
+                  effects on the server
+                * PUT - The PUT method replaces all current representations of
+                  the target resource with the request payload.
+                * PATCH - The PATCH method is used to apply partial
+                  modifications to a resource.
+                * DELETE - The DELETE method deletes the specified resource.
+                * HEAD - The HEAD method asks for a response identical to
+                  that of a GET request, but without the response body.
+                * CONNECT - The CONNECT method establishes a tunnel to the
+                  server identified by the target resource.
+                * OPTIONS - The OPTIONS method is used to describe the
+                  communication options for the target resource.
+                * TRACE - The TRACE method performs a message loop-back test
+                  along the path to the target resource.
+            Resource (str): Path for Resource on API.
+            obj (obj): str, dict or list to be converted to JSON if encode is
+                True. Otherwise sent as clear text. Objects with json method
+                will be used to return json.
+            headers (dict): HTTP Headers to send with the request.
+            encode (bool): Encode request body as JSON where possible.
+            decode (bool): Decode response body as JSON where possible.
+
+        Response body will be string unless json data is decoded either
+        a list or dict will be returned.
+
+        Returns tuple (status code, respone headers, response body)
+        """
 
         if endpoint is not None:
             if endpoint in self._endpoints:
-                url = "%s/%s" % (self._endpoints[endpoint], url)
+                resource = "%s/%s" % (self._endpoints[endpoint], resource)
             else:
                 raise ClientError('Endpoint (%s)' % endpoint,
                                   'Endpoint not found',
                                   404)
         else:
-            if self.url not in url:
-                url = "%s/%s" % (self.url, url)
+            if self.url not in resource:
+                resource = "%s/%s" % (self.url, resource)
             endpoint = "Tachyonic"
 
-        url = clean_url(url)
+        resource = clean_url(resource)
 
         if headers is None:
             headers = self.tachyonic_headers
@@ -168,7 +259,7 @@ class Client(RestClient):
         try:
             status, headers, response = super(Client,
                                               self).execute(method,
-                                                            url,
+                                                            resource,
                                                             obj,
                                                             headers,
                                                             encode=encode,

@@ -42,7 +42,7 @@ from tachyonic.neutrino.imports import import_modules, init_classes
 from tachyonic.neutrino.strings import if_unicode_to_utf8
 from tachyonic.neutrino.dt import Datetime
 from tachyonic.neutrino.wsgi import restart
-from tachyonic.neutrino.wsgi import template
+from tachyonic.neutrino import template
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino.logger import Logger
 from tachyonic.neutrino.wsgi.router import Router
@@ -63,7 +63,6 @@ class Base(object):
         self.jinja = template.Jinja()
         self.get_template = self.jinja.get_template
         self.render_template = self.jinja.render_template
-        self.debug = True
         self.context = {}
         self.policy = {}
         self.config = Config()
@@ -98,7 +97,7 @@ class Base(object):
             self.config.load(config_file_path)
             self.app_config = self.config.get('application')
             self.log_config = self.config.get('logging')
-            self.debug = self.log_config.get_boolean('debug')
+            log_level = self.log_config.get('level', 'DEBUG')
             self.app_name = self.app_config.get('name','tachyonic')
 
             # Load Logger
@@ -106,7 +105,7 @@ class Base(object):
             self.logger.load(app_name=self.app_name,
                              syslog_host=log_config.get('host', None),
                              syslog_port=log_config.get_int('port', 514),
-                             debug=self.debug,
+                             level=log_level,
                              log_file=log_config.get('file', None))
 
             log.info("STARTING APPLICATION PROCESS FOR %s" % (self.app_name,))
@@ -121,7 +120,7 @@ class Base(object):
             # Monitor Python modules and configs for changes.
             # If change detected kill myself... only while debug is enabled.
             # This makes it easier to do development...
-            if self.debug is True:
+            if log.getEffectiveLevel() <= logging.DEBUG:
                 restart.start(interval=1.0)
                 restart.track(config_file_path)
                 restart.track(policy_file_path)
@@ -154,7 +153,7 @@ class Base(object):
             except:
                 pass
 
-            if self.debug is True:
+            if log.getEffectiveLevel() <= logging.DEBUG:
                 os.kill(os.getpid(), signal.SIGINT)
 
     def register_cleanup(self, function):

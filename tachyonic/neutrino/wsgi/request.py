@@ -34,7 +34,7 @@ from urllib.parse import quote
 
 from tachyonic.neutrino import js
 from tachyonic.neutrino.exceptions import Error
-from tachyonic.neutrino.wsgi.headers import Headers
+from tachyonic.neutrino.http.headers import Headers
 from tachyonic.neutrino.wsgi.cookies import Cookies
 from tachyonic.neutrino.ids import random_id
 from tachyonic.neutrino.wsgi.session import SessionFile

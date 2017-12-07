@@ -35,6 +35,12 @@ import stat
 from tachyonic.neutrino.validate import is_socket
 from tachyonic.neutrino.threadlist import ThreadList
 
+log_levels = [ 'CRITICAL'
+               'ERROR',
+               'WARNING',
+               'INFO',
+               'DEBUG' ]
+
 class Logger(object):
     """Logger
 
@@ -60,7 +66,7 @@ class Logger(object):
             self.stdout.formatter = log_format
 
     def load(self, app_name='Neutrino', log_file=None, syslog_host='localhost',
-             syslog_port=514, debug=False):
+             syslog_port=514, level='WARNING'):
         """ Load / Configure Logging Facilities.
 
         Initially this method is used to configure logging facilities.
@@ -70,13 +76,19 @@ class Logger(object):
             log_file (str): Path to log file (default: None).
             syslog_host (str): IP or hostname of syslog server.
             syslog_port (int): Syslog Server Port (default: 514).
-            debug (bool): Log all output or only warning, error and criticial.
+            log_level: Log output with set value and above as per order.
+                * CRITICAL
+                * ERROR
+                * WARNING
+                * INFO
+                * DEBUG
         """
 
-        if debug is True:
-            self.log.setLevel(logging.DEBUG)
+        level = level.upper()
+        if level in log_levels:
+            self.log.setLevel(getattr(logging, level))
         else:
-            self.log.setLevel(logging.WARNING)
+            raise Exception('Invalid Logging Level %s' % level)
 
         log_format = logging.Formatter('%(asctime)s ' + app_name + ' %(name)s[' + str(os.getpid()) +
                                        '] <%(levelname)s>: %(message)s %(extra)s', datefmt='%b %d %H:%M:%S')

@@ -44,7 +44,7 @@ from tachyonic.neutrino.dt import utc_time
 
 log = logging.getLogger(__name__)
 
-def _log(db, msg, debug=False, elapsed=0):
+def _log(db, msg, elapsed=0):
     """Debug Log Function
 
     Function to log in the case where debugging
@@ -53,16 +53,16 @@ def _log(db, msg, debug=False, elapsed=0):
     Args:
         db (object): pymysql connection object.
         msg (str): Log message.
-        debug (bool): Wether to log debug output.
         elapsed (float): Time elapsed.
     """
-    if debug is True:
+    if log.getEffectiveLevel() <= logging.DEBUG:
         log_msg = (msg +
-                   " (%s,%s,%s) (DURATION: %.4fs)" %
-                   (db.get_server_info(),
+                   " (DURATION: %.4fs) (%s,%s,%s)" %
+                   (elapsed,
+                    db.get_server_info(),
                     db.get_host_info(),
                     db.thread_id,
-                    elapsed))
+                    ))
         if elapsed > 0.1:
             log_msg = "!SLOW! " + log_msg
         log.debug(log_msg)
@@ -79,12 +79,10 @@ class MysqlWrapper(object):
         username (str): Database username.
         password (str): Database password.
         database (str): Database for connection.
-        debug (bool): Enable Debug
     """
     def __init__(self, name='default', host=None, username=None,
-                 password=None, database=None, debug=False):
+                 password=None, database=None):
         self.name = name
-        self.debug = debug
 
         self.db = _connect(host=host,
                            username=username, password=password,
@@ -151,7 +149,7 @@ class MysqlWrapper(object):
             # Convert params to list if tuple.
             params = list(params)
 
-        result = _execute(self.db, self.cursor, query, params, self.debug)
+        result = _execute(self.db, self.cursor, query, params)
         self.uncommited = True
 
         return result
@@ -202,7 +200,7 @@ class MysqlWrapper(object):
         else:
             lock = "READ"
         query = "LOCK TABLES %s %s" % (table, lock)
-        _execute(self.cursor, query, self.debug)
+        _execute(self.cursor, query)
         self.locks = True
 
     def unlock(self):
@@ -212,7 +210,7 @@ class MysqlWrapper(object):
         session.
         """
         query = "UNLOCK TABLES"
-        _execute(self.cursor, query, self.debug)
+        _execute(self.cursor, query)
         self.locks = False
 
     def commit(self):
@@ -222,7 +220,7 @@ class MysqlWrapper(object):
         current transaction; otherwise this method successfully does nothing.
         """
         if self.uncommited is True:
-            _commit(self.db, self.debug)
+            _commit(self.db)
             self.uncommited = False
 
     def rollback(self):
@@ -232,14 +230,14 @@ class MysqlWrapper(object):
         (cancels) the current transaction; otherwise a NotSupportedError is raised.
         """
         if self.uncommited is True:
-            _rollback(self.db, self.debug)
+            _rollback(self.db)
 
 
 # Create pooling group for MysqlWrapper using Shrek
 shrek = Shrek(MysqlWrapper)
 
 def Mysql(name='default', host=None, username=None,
-          password=None, database=None, debug=False):
+          password=None, database=None):
     """Connection objects are returned by the connect() function.
 
     Uses Neutrino Shrek for pooling mysql sessions on per thread basis.
@@ -255,7 +253,7 @@ def Mysql(name='default', host=None, username=None,
     """
     mysql_wrapper = shrek.get(name, host=host,
                               username=username, password=password,
-                              database=database, debug=debug)
+                              database=database)
 
     # PING AND RECONNECT
     mysql_wrapper.ping()
@@ -266,7 +264,7 @@ def Mysql(name='default', host=None, username=None,
 
     return mysql_wrapper
 
-def _connect(host, username, password, database, debug=False):
+def _connect(host, username, password, database):
     """Connection objects are returned by the connect() function.
 
     Generally you do not need to use this function directly, as an
@@ -281,7 +279,7 @@ def _connect(host, username, password, database, debug=False):
     Returns connection object.
     """
     with timer() as elapsed:
-        if debug is True:
+        if log.getEffectiveLevel() <= logging.DEBUG:
             log.debug("Connecting Database Connection" +
                       " (server=%s,username=%s,database=%s)" %
                       (host, username,
@@ -294,7 +292,7 @@ def _connect(host, username, password, database, debug=False):
                                use_unicode=True,
                                charset='utf8',
                                autocommit=False)
-        if debug is True:
+        if log.getEffectiveLevel() <= logging.DEBUG:
             log.debug("Connected Database Connection" +
                       " (server=%s,username=%s,database=%s,%s,%s,%s)" %
                       (host,
@@ -372,7 +370,7 @@ def _parsed_results(results):
     #            result[field] = utc_time(result[field])
     return results
 
-def _execute(db, cursor, query=None, params=None, debug=False):
+def _execute(db, cursor, query=None, params=None):
     """Execute SQL Query.
 
     Generally you do not need to use this function directly, as its
@@ -386,7 +384,6 @@ def _execute(db, cursor, query=None, params=None, debug=False):
         cursor (object): pymysql cursor provided by connection.
         query (str): SQL Query String.
         params (list): Query values as per query string.
-        debug: (bool): Wether to log debug output.
 
     Returns:
         Parsed Results list containing dictionaries with field values per row.
@@ -403,11 +400,11 @@ def _execute(db, cursor, query=None, params=None, debug=False):
             raise MySQLdb.IntegrityError(code, value)
 
         result = cursor.fetchall()
-        _log(db, "Query %s" % log_query, debug, elapsed())
+        _log(db, "Query %s" % log_query, elapsed())
 
         return _parsed_results(result)
 
-def _commit(db, debug=False):
+def _commit(db):
     """Commit Transactionl Queries.
 
     Generally you do not need to use this function directly, as its
@@ -422,9 +419,9 @@ def _commit(db, debug=False):
     """
     with timer() as elapsed:
         db.commit()
-        _log(db, "Commit", debug, elapsed())
+        _log(db, "Commit", elapsed())
 
-def _rollback(db, debug=False):
+def _rollback(db):
     """Rollback Transactional Queries
 
     Generally you do not need to use this function directly, as its
@@ -435,8 +432,7 @@ def _rollback(db, debug=False):
 
     Args:
         db (object): pymysql connection object.
-        debug (bool): Wether to log debug output.
     """
     with timer() as elapsed:
         db.rollback()
-        _log(db, "Rollback", debug, elapsed())
+        _log(db, "Rollback", elapsed())
