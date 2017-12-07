@@ -32,81 +32,97 @@ import logging
 import _thread as thread
 import threading
 
-lock = threading.Lock()
-
 log = logging.getLogger(__name__)
 
 
 class ThreadList(object):
+    """Thread list.
+
+    Allows thread safe and mutable iterations and unique sequence set of values
+    per thread. Context for sequence of values being the thread id.
+
+    Define globally for process and not within thread to take advantage of unique
+    content functionality.
+    """
     def __init__(self):
         self._threads = {}
 
     def _thread(self):
-        lock.acquire()
-        try:
-            self._thread_id = thread.get_ident()
-            if self._thread_id not in self._threads:
-                self._threads[self._thread_id] = []
-            return self._threads[self._thread_id]
-        finally:
-            lock.release()
+        self._thread_id = thread.get_ident()
+        if self._thread_id not in self._threads:
+            self._threads[self._thread_id] = []
+
+        return self._threads[self._thread_id]
 
     def clear(self):
-        lock.acquire()
-        try:
-            self._thread_id = thread.get_ident()
-            if self._thread_id in self._threads:
-                del self._threads[self._thread_id]
-        finally:
-            lock.release()
+        """Clear sequence for thread.
+        """
+        self._thread_id = thread.get_ident()
+        if self._thread_id in self._threads:
+            del self._threads[self._thread_id]
 
     def append(self, value):
+        """Appends object obj to list
+
+        Args:
+            Object/Value to be appended.
+        """
         data = self._thread()
-        lock.acquire()
-        try:
-            data.append(value)
-        finally:
-            lock.release()
+        data.append(value)
 
     def __setitem__(self, item, value):
+        """Update value of item
+        """
         data = self._thread()
-        lock.acquire()
-        try:
-            data[item] = value
-        finally:
-            lock.release()
+        data[item] = value
 
     def __getitem__(self, item):
+        """Get value of item.
+        """
         data = self._thread()
+
         if item in data:
             return self.get(item)
         else:
             raise IndexError('list index out of range')
 
     def __delitem__(self, item):
+        """Delete item in sequence.
+        """
         data = self._thread()
-        lock.acquire()
-        try:
-            del data[item]
-        finally:
-            lock.release()
+        del data[item]
 
     def __contains__(self, item):
+        """True if has a item, else False.
+        """
         data = self._thread()
+
         return item in data
 
     def __iter__(self):
+        """Return iterable of thread list.
+        """
         data = self._thread()
+
         return iter(data)
 
     def __len__(self):
+        """Return int length of thread list.
+        """
         data = self._thread()
+
         return len(data)
 
     def __repr__(self):
+        """Return representation of thread list.
+        """
         data = self._thread()
+
         return repr(data)
 
     def __str__(self):
+        """Return string of thread list.
+        """
         data = self._thread()
+
         return str(data)

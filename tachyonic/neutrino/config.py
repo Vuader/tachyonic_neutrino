@@ -52,15 +52,21 @@ class Section(object):
             self.options = []
 
     def __getitem__(self, key):
+        """Get an option value for section.
+        """
         if key in self.options and self.config.get(self.section, key).strip() != '':
             return self.config.get(self.section, key)
         else:
             raise KeyError(key)
 
     def __setitem__(self, key, value):
+        """Set an option value for section.
+        """
         return self.config.set(self.section, key, value)
 
     def __contains__(self, key):
+        """True if has section, else False.
+        """
         if key in self.options:
             if self.config.get(self.section, key).strip() != '':
                 return True
@@ -70,12 +76,18 @@ class Section(object):
             return False
 
     def __iter__(self):
+        """Return iterable of section items.
+        """
         return iter(self.config.items(self.section))
 
     def __repr__(self):
+        """Representation of Section
+        """
         return repr(self.section)
 
     def __str__(self):
+        """String value of Section
+        """
         return str(self.section)
 
     def get(self, option, default=None):
@@ -106,6 +118,8 @@ class Section(object):
         return self.config.set(self.section, option, value)
 
     def dict(self):
+        """Return section as dictionary.
+        """
         d = {}
         for key in self.options:
             d[key] = self.config.get(self.section, key)
@@ -113,7 +127,7 @@ class Section(object):
 
     def get_boolean(self, option=None, default=False):
         """Get Boolean value of option.
-        
+
         A convenience method which coerces the option in the specified
         section to a Boolean value. Note that the accepted values for the
         option are "1", "yes", "true", and "on", which cause this method to

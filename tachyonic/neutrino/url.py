@@ -37,19 +37,34 @@ log = logging.getLogger(__name__)
 def clean_url(url):
     """Clean URL.
 
-    Replaces two or more / with one.
+    Replaces two or more / with one in path.
+
+    A generic URI is of the form:
+        scheme://user:password@host:port/path]?query#fragment
 
     Args:
         url (string): URL to parse.
 
-    Returns formatted url.
+    Returns formatted url str.
     """
     parsed = list(urlparse.urlparse(url))
     parsed[2] = re.sub("/{2,}", "/", parsed[2]).strip('/') # replace two or more / with one
+
     cleaned = urlparse.urlunparse(parsed)
 
     return cleaned
 
 def host_url(url):
+    """Return only scheme + host + port from url.
+
+    A generic URI is of the form:
+        scheme://user:password@host:port/path]?query#fragment
+
+    Args:
+        url (str): Standard URL as per RFC3986.
+
+    Returns value for scheme + host + port as str.
+    """
     url = urlparse.urlparse(url)
+
     return "%s://%s" % (url.scheme, url.netloc)
