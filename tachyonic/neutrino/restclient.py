@@ -31,6 +31,7 @@ import logging
 import requests
 from collections import OrderedDict
 
+from tachyonic.neutrino.timer import timer
 from tachyonic.neutrino import __version__
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.strings import if_unicode_to_utf8
@@ -46,12 +47,13 @@ log = logging.getLogger(__name__)
 req_session = ThreadDict()
 
 def _debug(method, url, payload, request_headers, response_headers,
-           response, status_code):
+           response, status_code, elapsed):
+
     if log.getEffectiveLevel() <= logging.DEBUG:
-        log.debug('Method: %s, URL: %s (%s %s)' % (method,
-                                                url,
-                                                status_code,
-                                                status_codes[status_code]))
+        log.debug('Method: %s' % method +
+                  ', URL: %s' % url +
+                  ' (%s %s)' % (status_code, status_codes[status_code]) +
+                  ' (DURATION: %.4fs)' % elapsed)
         log.debug('Request Headers: %s' % request_headers)
         log.debug('Response Headers: %s' % response_headers)
         if is_text(payload):
@@ -81,7 +83,7 @@ class RestClient(object):
     Args:
         timeout (float/tuple): How many seconds to wait for the server to send
             data before giving up, as a float, or a (connect timeout, read
-            read timeout) tuple. Defaults to (8, 2) (optional)
+            read timeout) tuple. Defaults to (2, 8) (optional)
         auth (tuple): Auth tuple to enable Basic/Digest/Custom HTTP Auth.
             ('username', 'password' ) pair.
         verify (str/bool): Either a boolean, in which case it controls whether
@@ -91,12 +93,12 @@ class RestClient(object):
         cert (str/tuple): if String, path to ssl client cert file (.pem). If
             Tuple, ('cert', 'key') pair.
     """
-    def __init__(self, timeout=(8, 2),
+    def __init__(self, timeout=(2, 8),
                  auth=None, verify=True,
                  cert=None):
 
         self.auth = auth
-        self.timeout = (30, 2)
+        self.timeout = timeout
         self.verify = verify
         self.cert = cert
 
@@ -149,73 +151,75 @@ class RestClient(object):
 
         Returns tuple (status code, respone headers, response body)
         """
-        if encode is True:
-            data = self._parse_data(data)
 
-        host = host_url(url)
+        with timer() as elapsed:
+            if encode is True:
+                data = self._parse_data(data)
 
-        if host in req_session:
-            log.debug("Using existing session: %s" % host)
-            session = req_session[host]
-        else:
-            log.debug("New session: %s" % host)
-            req_session[host] = requests.Session()
-            session = req_session[host]
+            host = host_url(url)
 
-        if data is None:
-            data = ''
+            if host in req_session:
+                log.debug("Using existing session: %s" % host)
+                session = req_session[host]
+            else:
+                log.debug("New session: %s" % host)
+                req_session[host] = requests.Session()
+                session = req_session[host]
 
-        headers['User-Agent'] = 'Tachyonic Neutrino v%s (RESTful API Client)' % __version__
-        headers['Content-Length'] = str(len(data))
-        req = requests.Request(method.upper(),
-                               url,
-                               data=data,
-                               headers=headers,
-                               auth=self.auth)
+            if data is None:
+                data = ''
 
-        session_request = session.prepare_request(req)
+            headers['User-Agent'] = 'Tachyonic Neutrino v%s (RESTful API Client)' % __version__
+            headers['Content-Length'] = str(len(data))
+            req = requests.Request(method.upper(),
+                                   url,
+                                   data=data,
+                                   headers=headers,
+                                   auth=self.auth)
 
-        try:
-            resp = session.send(session_request,
-                               timeout=self.timeout,
-                               verify=self.verify,
-                               cert=self.cert)
-            _debug(method, url, data, headers, resp.headers,
-                   resp.content, resp.status_code)
-
-        except requests.ConnectionError as e:
-            raise RestClientError('Connection error %s' % e)
-        except requests.HTTPError as e:
-            raise RestClientError('HTTP error %s' % e)
-        except requests.ConnectTimeout as e:
-            raise RestClientError('Connect timeout %s' % e)
-        except requests.ReadTimeout as e:
-            raise RestClientError('Read timeout %s' % e)
-        except requests.Timeout as e:
-            raise RestClientError('Timeout %s' % e)
-
-        if ('content-type' in resp.headers and
-                'application/json' in resp.headers['content-type'].lower() and
-                decode is True):
-
-            if resp.encoding.upper() != 'UTF-8':
-                raise RestClientError('JSON requires UTF-8 Encoding')
+            session_request = session.prepare_request(req)
 
             try:
-                if resp.status_code != 204:
-                    return (resp.status_code,
-                            resp.headers,
-                            js.loads(resp.content))
-                else:
-                    return (resp.status_code,
-                            resp.headers,
-                            b'')
-            except Exception as e:
-                raise RestClientError('JSON Decode: %s' % e)
+                resp = session.send(session_request,
+                                   timeout=self.timeout,
+                                   verify=self.verify,
+                                   cert=self.cert)
+                _debug(method, url, data, headers, resp.headers,
+                       resp.content, resp.status_code, elapsed())
 
-        return (resp.status_code,
-                resp.headers,
-                resp.content)
+            except requests.ConnectionError as e:
+                raise RestClientError('Connection error %s' % e)
+            except requests.HTTPError as e:
+                raise RestClientError('HTTP error %s' % e)
+            except requests.ConnectTimeout as e:
+                raise RestClientError('Connect timeout %s' % e)
+            except requests.ReadTimeout as e:
+                raise RestClientError('Read timeout %s' % e)
+            except requests.Timeout as e:
+                raise RestClientError('Timeout %s' % e)
+
+            if ('content-type' in resp.headers and
+                    'application/json' in resp.headers['content-type'].lower() and
+                    decode is True):
+
+                if resp.encoding.upper() != 'UTF-8':
+                    raise RestClientError('JSON requires UTF-8 Encoding')
+
+                try:
+                    if resp.status_code != 204:
+                        return (resp.status_code,
+                                resp.headers,
+                                js.loads(resp.content))
+                    else:
+                        return (resp.status_code,
+                                resp.headers,
+                                b'')
+                except Exception as e:
+                    raise RestClientError('JSON Decode: %s' % e)
+
+            return (resp.status_code,
+                    resp.headers,
+                    resp.content)
 
     @staticmethod
     def close_all():
