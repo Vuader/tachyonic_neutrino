@@ -29,6 +29,7 @@
 
 import logging
 
+from tachyonic.neutrino.wsgi.headers import status_codes
 from tachyonic.neutrino.threaddict import ThreadDict
 from tachyonic.neutrino.restclient import RestClient
 from tachyonic.neutrino import constants as const
@@ -177,7 +178,7 @@ class Client(RestClient):
                               e,
                               500)
 
-        if status != 200:
+        if status >= 400:
             if isinstance(response, dict) and 'error' in response:
                 if 'title' in response['error']:
                     title = "Endpoint (%s): %s" % (endpoint,
@@ -193,6 +194,10 @@ class Client(RestClient):
 
                 raise ClientError(filter_none_text(title),
                                   filter_none_text(description),
+                                  status)
+            else:
+                raise ClientError('%s %s' % (status, status_codes[status]),
+                                  None,
                                   status)
 
         return [headers, response]

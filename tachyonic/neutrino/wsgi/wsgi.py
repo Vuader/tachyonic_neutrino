@@ -184,25 +184,31 @@ class Wsgi(Base, Error):
                 log.error("%s\n%s" % (e, trace))
                 self._error(e, req, resp)
 
-            # Send status and headers to the server using the supplied function
-            start_response("%s %s" % (resp.status, status_codes[resp.status]),
-                           resp.wsgi_headers())
-
-            # Clean Process
+            # Clean Proces
             self._cleanup()
 
             # Save Client Session
             req.session.save()
 
+            def _start_response():
+                # Send status and headers to the server using the supplied function
+                start_response("%s %s" % (resp.status, status_codes[resp.status]),
+                               resp.wsgi_headers())
+
             # Return Body
             if resp.content_length == 0:
                 # Return iterable object - from view.
                 if returned is not None:
+                    _start_response()
                     return returned
                 else:
-                    return ''.encode('UTF-8')
+                    resp.status = 204
+                    resp.write('')
+                    _start_response()
+                    return resp
             else:
                 # Return response object
+                _start_response()
                 return resp
 
         except Exception as e:
