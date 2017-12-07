@@ -68,11 +68,11 @@ class Client(RestClient):
     """
     def __init__(self, url, **kwargs):
         self._endpoints = {}
-        self.url = url
+        self._url = url
 
         if url in session and 'endpoints' in session[url]:
             log.debug("Using existing session %s" % url)
-            self.tachyonic_headers = session[url]['headers']
+            self._tachyonic_headers = session[url]['headers']
             self._endpoints = session[url]['endpoints']
             super(Client, self).__init__(**kwargs)
         else:
@@ -80,8 +80,8 @@ class Client(RestClient):
             session[url] = {}
             session[url]['headers'] = {}
             super(Client, self).__init__(**kwargs)
-            self.tachyonic_headers = session[url]['headers']
-            self.tachyonic_headers = session[url]['endpoints'] = self.endpoints()
+            self._tachyonic_headers = session[url]['headers']
+            session[url]['endpoints'] = self._collect_endpoints()
             self._endpoints = session[url]['endpoints']
 
     @staticmethod
@@ -92,8 +92,8 @@ class Client(RestClient):
             log.debug("Closing session: %s" % s)
         session.clear()
 
-    def endpoints(self):
-        url = self.url
+    def _collect_endpoints(self):
+        url = self._url
         try:
             status, headers, response = super(Client,
                                               self).execute(const.HTTP_GET,
@@ -103,9 +103,12 @@ class Client(RestClient):
                               e,
                               500)
 
-        self._endpoints = response['external']
-
-        return self._endpoints
+        if 'external' in response:
+            return response['external']
+        else:
+            raise ClientError('Retrieve Endpoints',
+                              'Invalid API Response.',
+                              500)
 
     def authenticate(self, username, password, domain):
         """Authenticate using credentials.
@@ -120,28 +123,26 @@ class Client(RestClient):
 
         Returns authenticated result.
         """
-        url = self.url
-        auth_url = "%s/v1/token" % (url,)
+        auth_url = "%s/v1/token" % (self._url,)
 
-        if 'X-Tenant-Id' in self.tachyonic_headers:
-            del self.tachyonic_headers['X-Tenant-Id']
-        if 'X-Auth-Token' in self.tachyonic_headers:
-            del self.tachyonic_headers['X-Auth-Token']
-        self.tachyonic_headers['X-Domain'] = domain
+        if 'X-Tenant-Id' in self._tachyonic_headers:
+            del self._tachyonic_headers['X-Tenant-Id']
+        if 'X-Auth-Token' in self._tachyonic_headers:
+            del self._tachyonic_headers['X-Auth-Token']
+        self._tachyonic_headers['X-Domain'] = domain
 
         data = {}
         data['username'] = username
         data['password'] = password
         data['expire'] = 1
 
-        server_headers, result = self.execute("POST", auth_url,
-                                              data, self.tachyonic_headers)
+        headers, result = self.execute("POST", auth_url,
+                                       data, self._tachyonic_headers)
 
         if 'token' in result:
             self._token = result['token']
-            self.tachyonic_headers['X-Auth-Token'] = self._token
+            self._tachyonic_headers['X-Auth-Token'] = self._token
 
-        session[url]['headers'] = self.tachyonic_headers
         return result
 
     def token(self, token, domain, tenant_id=None):
@@ -157,37 +158,33 @@ class Client(RestClient):
 
         Returns authenticated result.
         """
-        url = self.url
-        auth_url = "%s/v1/token" % (url,)
+        auth_url = "%s/v1/token" % (self._url,)
 
         if tenant_id is not None:
-            self.tachyonic_headers['X-Tenant-Id'] = tenant_id
-        else:
-            del self.tachyonic_headers['X-Tenant-Id']
-
-        self.tachyonic_headers['X-Domain'] = domain
-        self.tachyonic_headers['X-Auth-Token'] = token
+            self._tachyonic_headers['X-Tenant-Id'] = tenant_id
+        elif 'X-Tenant-Id' in self._tachyonic_headers:
+            del self._tachyonic_headers['X-Tenant-Id']
 
         headers, result = self.execute("GET", auth_url)
 
         if 'token' in result:
             self.token = token
+            self._tachyonic_headers['X-Domain'] = domain
+            self._tachyonic_headers['X-Auth-Token'] = token
         else:
-            if 'X-Tenant-Id' in self.tachyonic_headers:
-                del self.tachyonic_headers['X-Tenant-Id']
-            if 'X-Domain' in self.tachyonic_headers:
-                del self.tachyonic_headers['X-Domain']
-            if 'X-Auth-Token' in self.tachyonic_headers:
-                del self.tachyonic_headers['X-Auth-Token']
-
-        session[url]['headers'] = self.tachyonic_headers
+            if 'X-Tenant-Id' in self._tachyonic_headers:
+                del self._tachyonic_headers['X-Tenant-Id']
+            if 'X-Domain' in self._tachyonic_headers:
+                del self._tachyonic_headers['X-Domain']
+            if 'X-Auth-Token' in self._tachyonic_headers:
+                del self._tachyonic_headers['X-Auth-Token']
 
         return result
 
     def domain(self, domain):
         """Set context of domain name.
         """
-        self.tachyonic_headers['X-Domain'] = domain
+        self._tachyonic_headers['X-Domain'] = domain
 
     def tenant(self, tenant):
         """Set context of tenant unique id.
@@ -195,7 +192,7 @@ class Client(RestClient):
         if tenant is None:
             del self.tachyonic_headers['X-Tenant-Id']
         else:
-            self.tachyonic_headers['X-Tenant-Id'] = tenant
+            self._tachyonic_headers['X-Tenant-Id'] = tenant
 
     def execute(self, method, resource,
                 obj=None, headers=None, endpoint=None,
@@ -245,16 +242,16 @@ class Client(RestClient):
                                   'Endpoint not found',
                                   404)
         else:
-            if self.url not in resource:
-                resource = "%s/%s" % (self.url, resource)
+            if self._url not in resource:
+                resource = "%s/%s" % (self._url, resource)
             endpoint = "Tachyonic"
 
         resource = clean_url(resource)
 
         if headers is None:
-            headers = self.tachyonic_headers
+            headers = self._tachyonic_headers
         else:
-            headers.update(self.tachyonic_headers)
+            headers.update(self._tachyonic_headers)
 
         try:
             status, headers, response = super(Client,
