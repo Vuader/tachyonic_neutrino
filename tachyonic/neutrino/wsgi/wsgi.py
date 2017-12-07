@@ -50,6 +50,7 @@ from tachyonic.neutrino.wsgi.error import Error
 from tachyonic.neutrino.wsgi.request import Request
 from tachyonic.neutrino.wsgi.response import Response
 from tachyonic.neutrino.http.headers import status_codes
+from tachyonic.neutrino.timer import timer
 
 log = logging.getLogger(__name__)
 
@@ -92,121 +93,125 @@ class Wsgi(Base, Error):
             response body
         """
         try:
-            # MYSQL Application Database
-            mysql_config = self.config.get('mysql')
-            if mysql_config.get('database') is not None:
-                Mysql(**mysql_config.dict())
+            with timer() as elapsed:
+                # MYSQL Application Database
+                mysql_config = self.config.get('mysql')
+                if mysql_config.get('database') is not None:
+                    Mysql(**mysql_config.dict())
 
-            # Redis
-            redis_config = self.config.get('redis')
-            if redis_config.get('host') is not None:
-                redis(**redis_config.dict())
+                # Redis
+                redis_config = self.config.get('redis')
+                if redis_config.get('host') is not None:
+                    redis(**redis_config.dict())
 
-            # Request and Response Object
-            req = Request(environ, self)
-            resp = Response(req)
+                # Request and Response Object
+                req = Request(environ, self)
+                resp = Response(req)
 
-            # Debug Request logging
-            if log.getEffectiveLevel() <= logging.DEBUG:
-                log.debug("Request URI: %s" % (req.get_full_path()))
-                log.debug("Request QUERY: %s" % (req.environ['QUERY_STRING'],))
+                # Router to route based on Request
+                r = self.router.route(req)
 
-            # Router to route based on Request
-            r = self.router.route(req)
+                # JINJA Globals
+                static = self.config.get('application').get('static',
+                                                            '').rstrip('/')
+                self.jinja.globals['SITE'] = req.environ['SCRIPT_NAME']
+                self.jinja.globals['STATIC'] = static
+                self.jinja.request['REQUEST'] = req
+                if self.jinja.globals['SITE'] == '/':
+                    self.jinja.globals['SITE'] = ''
+                self.jinja.globals['STATIC'] = self.app_config.get('static',
+                                                                  '').rstrip('/')
+                if self.jinja.globals['STATIC'] == '/':
+                    self.jinja.globals['STATIC'] = ''
 
-            # JINJA Globals
-            static = self.config.get('application').get('static',
-                                                        '').rstrip('/')
-            self.jinja.globals['SITE'] = req.environ['SCRIPT_NAME']
-            self.jinja.globals['STATIC'] = static
-            self.jinja.request['REQUEST'] = req
-            if self.jinja.globals['SITE'] == '/':
-                self.jinja.globals['SITE'] = ''
-            self.jinja.globals['STATIC'] = self.app_config.get('static',
-                                                              '').rstrip('/')
-            if self.jinja.globals['STATIC'] == '/':
-                self.jinja.globals['STATIC'] = ''
+                # Datetime Object and exposement
+                dt = Datetime()
+                req.context['datetime'] = dt
+                self.jinja.globals['DATETIME'] = dt
+                returned = None
 
-            # Datetime Object and exposement
-            dt = Datetime()
-            req.context['datetime'] = dt
-            self.jinja.globals['DATETIME'] = dt
-            returned = None
-
-            try:
-                if r is not None:
-                    obj, methods, obj_kwargs, route, name = r
-                    req.args = obj_kwargs
-                    req.view = name
-                else:
-                    obj_kwargs = {}
-
-                policy = Policy(self.policy, context=req.context, session=req.session, kwargs=obj_kwargs, qwargs=req.query)
-                req.policy = policy
-
-                for m in self.middleware:
-                    if hasattr(m, 'pre'):
-                        m.pre(req, resp)
-
-                if r is not None:
-                    if req.view is None or policy.validate(req.view):
-                        returned = obj(req, resp, **obj_kwargs)
-                        if isinstance(returned, (str, bytes)):
-                            resp.write(returned)
-                        elif isinstance(returned, (OrderedDict, dict, list)):
-                            resp.content_type = const.APPLICATION_JSON
-                            resp.write(js.dumps(returned))
-                        elif hasattr(returned, 'json'):
-                            # IF JSON SERIALIZEABLE OBJECT
-                            resp.content_type = const.APPLICATION_JSON
-                            resp.write(returned.json())
+                try:
+                    if r is not None:
+                        obj, methods, obj_kwargs, route, name = r
+                        req.args = obj_kwargs
+                        req.view = name
                     else:
-                        raise exceptions.HTTPForbidden('Access Forbidden',
-                                                       'Access denied by application' +
-                                                       ' policy (%s)' % (req.view,))
-                else:
-                    raise exceptions.HTTPNotFound(description=req.environ['PATH_INFO'])
+                        obj_kwargs = {}
 
-                for m in reversed(self.middleware):
-                    if hasattr(m, 'post'):
-                        m.post(req, resp)
+                    req.policy = Policy(self.policy,
+                                        context=req.context,
+                                        session=req.session,
+                                        kwargs=obj_kwargs,
+                                        qwargs=req.query)
 
-            except exceptions.HTTPError as e:
-                if log.getEffectiveLevel() <= logging.DEBUG:
+                    for m in self.middleware:
+                        if hasattr(m, 'pre'):
+                            m.pre(req, resp)
+
+                    if r is not None:
+                        if req.view is None or req.policy.validate(req.view):
+                            returned = obj(req, resp, **obj_kwargs)
+                            if isinstance(returned, (str, bytes)):
+                                resp.write(returned)
+                            elif isinstance(returned, (OrderedDict, dict, list)):
+                                resp.content_type = const.APPLICATION_JSON
+                                resp.write(js.dumps(returned))
+                            elif hasattr(returned, 'json'):
+                                # IF JSON SERIALIZEABLE OBJECT
+                                resp.content_type = const.APPLICATION_JSON
+                                resp.write(returned.json())
+                        else:
+                            raise exceptions.HTTPForbidden('Access Forbidden',
+                                                           'Access denied by application' +
+                                                           ' policy (%s)' % (req.view,))
+                    else:
+                        raise exceptions.HTTPNotFound(description=req.environ['PATH_INFO'])
+
+                    for m in reversed(self.middleware):
+                        if hasattr(m, 'post'):
+                            m.post(req, resp)
+
+                except exceptions.HTTPError as e:
+                    if log.getEffectiveLevel() <= logging.DEBUG:
+                        trace = str(traceback.format_exc())
+                        log.debug("%s\n%s" % (e, trace))
+                    self._error(e, req, resp)
+                except Exception as e:
                     trace = str(traceback.format_exc())
-                    log.debug("%s\n%s" % (e, trace))
-                self._error(e, req, resp)
-            except Exception as e:
-                trace = str(traceback.format_exc())
-                log.error("%s\n%s" % (e, trace))
-                self._error(e, req, resp)
+                    log.error("%s\n%s" % (e, trace))
+                    self._error(e, req, resp)
 
-            # Clean Process
-            self._cleanup()
+                # Clean Process
+                self._cleanup()
 
-            # Save Client Session
-            req.session.save()
+                # Save Client Session
+                req.session.save()
 
-            def _start_response():
-                # Send status and headers to the server using the supplied function
-                start_response("%s %s" % (resp.status, status_codes[resp.status]),
-                               resp.wsgi_headers())
+                # Debug Request logging
+                if log.getEffectiveLevel() <= logging.DEBUG:
+                    log.debug("Request URL: %s," % req.get_absolute_url() +
+                              " Method: %s" % req.method +
+                              " (DURATION: %.4fs)" % elapsed())
 
-            # Return Body
-            if resp.content_length == 0:
-                # Return iterable object - from view.
-                if returned is not None:
-                    _start_response()
-                    return returned
+                def _start_response():
+                    # Send status and headers to the server using the supplied function
+                    start_response("%s %s" % (resp.status, status_codes[resp.status]),
+                                   resp.wsgi_headers())
+                # Return Body
+                if resp.content_length == 0:
+                    # Return iterable object - from view.
+                    if returned is not None:
+                        _start_response()
+                        return returned
+                    else:
+                        resp.status = 204
+                        resp.write('')
+                        _start_response()
+                        return resp
                 else:
-                    resp.status = 204
-                    resp.write('')
+                    # Return response object
                     _start_response()
                     return resp
-            else:
-                # Return response object
-                _start_response()
-                return resp
 
         except Exception as e:
             trace = str(traceback.format_exc())
