@@ -42,10 +42,7 @@ import hashlib
 
 from pkg_resources import resource_stream, resource_listdir, resource_isdir, resource_exists
 
-import tachyonic.neutrino
-from tachyonic.neutrino import constants as const
 from tachyonic.neutrino.imports import import_module
-from tachyonic.neutrino import app
 from tachyonic.neutrino.server import auto_restart
 from tachyonic.neutrino.config import Config
 from tachyonic.neutrino import metadata
@@ -164,8 +161,8 @@ def _setup(args):
         _copy_file(module, path, 'resources/policy.json', 'policy.json', True)
 
     _create_dir(path, '/wsgi')
-    _copy_file('tachyonic.neutrino', path, 'resources/wsgi/app.py', 'wsgi/app.py', False)
-    _copy_file('tachyonic.neutrino', path, 'resources/wsgi/__init__.py', 'wsgi/__init__.py')
+    _copy_file('tachyonic.neutrino', path, 'wsgi/resources/wsgi/app.py', 'wsgi/app.py', False)
+    _copy_file('tachyonic.neutrino', path, 'wsgi/resources/wsgi/__init__.py', 'wsgi/__init__.py')
     _create_dir(path, '/templates')
     _static(args)
     _create_dir(path, '/tmp')
@@ -185,12 +182,12 @@ def _create(args):
             config.load("%s/settings.cfg" % path)
             _copy_file('tachyonic.neutrino',
                        path,
-                       'resources/settings.cfg',
+                       'wsgi/resources/settings.cfg',
                        'neutrino_settings.cfg.default')
         else:
             _copy_file('tachyonic.neutrino',
                        path,
-                       'resources/settings.cfg',
+                       'wsgi/resources/settings.cfg',
                        'settings.cfg')
             config.load("%s/settings.cfg" % path)
             config.get('application').set('name', name.replace('.',' ').upper())
@@ -208,8 +205,9 @@ def _create(args):
         _create_dir(path, '/wsgi')
         _copy_file('tachyonic.neutrino',
                    path,
-                   'resources/wsgi/app.py',
+                   'wsgi/resources/wsgi/app.py',
                    'wsgi/app.py')
+        print("MYDEBUG: Just finished with copying app.py")
         _copy_file('tachyonic.neutrino',
                    path,
                    'resources/wsgi/__init__.py',
@@ -225,7 +223,7 @@ def _create(args):
 
         _recursive_copy("%s/%s" % (path, package),
                         'tachyonic.neutrino',
-                        'resources/myproject')
+                        'wsgi/resources/myproject')
 
         _create_dir(path, '/%s/static/%s' % (package, name))
 

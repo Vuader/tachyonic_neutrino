@@ -17,5 +17,5 @@ app_root = (os.path.abspath(os.path.join(
                             '..')))
 
 # Initialize WSGI Object
-from tachyonic.neutrino import app
+from tachyonic.neutrino.wsgi import app
 application = app(app_root)
