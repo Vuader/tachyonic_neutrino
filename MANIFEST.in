@@ -25,4 +25,4 @@ include setup.py
 include tox.ini
 
 # NEUTRINO
-recursive-include tachyonic/neutrino/resources *
+recursive-include tachyonic/neutrino/wsgi/resources *
