@@ -31,14 +31,21 @@ import sys
 import logging
 
 from tachyonic.neutrino import exceptions
+from tachyonic.neutrino.timer import timer
 
 log = logging.getLogger(__name__)
 
 
 def import_module(module):
-    log.debug('Importing module: %s' % module)
-    __import__(module)
-    log.debug('Importing module: %s (Completed)' % module)
+    with timer() as elapsed:
+        log.debug('Importing module: %s' % module)
+
+        __import__(module)
+
+        log.debug('Importing module: %s (Completed) (DURATION %.4fs)' %
+                  (module,
+                   elapsed()))
+
     return sys.modules[module]
 
 def import_modules(modules):

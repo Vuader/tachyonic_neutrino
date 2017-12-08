@@ -29,8 +29,6 @@
 
 import logging
 from collections import OrderedDict
-from collections import Iterator
-from copy import copy
 from datetime import datetime
 from decimal import Decimal
 import decimal
@@ -40,7 +38,7 @@ import re
 
 import phonenumbers
 
-from tachyonic.neutrino.cls import ObjectName
+from tachyonic.neutrino.cls import ObjectName, ObjectReproduce
 from tachyonic.neutrino import creation_counter
 from tachyonic.neutrino import exceptions
 from tachyonic.neutrino import constants as const
@@ -52,11 +50,21 @@ log = logging.getLogger(__name__)
 
 
 def _declared_fields(cls):
+    """Return fields in object.
+
+    creation_counter() function used in class to set creation_counter property
+    on object for class. The creation_counter() keeps a global state of when
+    each field is defined in a model. The purpose is primarily for html forms.
+
+    Returns Ordered Dictionary as per when fields are defined.
+
+    The key is the name of the field with value as the field object.
+    """
     current_fields = []
+
     for name in dir(cls):
         prop = getattr(cls, name)
         if isinstance(prop, Field):
-            prop = copy(prop)
             current_fields.append((name, prop))
             prop._name = name
 
@@ -324,7 +332,7 @@ class Mysql(object):
         self.db.execute(sql, (id,))
 
 
-class Field(ObjectName):
+class Field(ObjectReproduce, ObjectName):
     def __init__(self, value=None, id=None, db=None, **kwargs):
         self.creation_counter = creation_counter()
         self._declared_fields = _declared_fields(self)
@@ -407,7 +415,7 @@ class Field(ObjectName):
 
     def _get_field(self, field):
         if field in self._declared_fields:
-            field = copy(self._declared_fields[field])
+            field = self._declared_fields[field].reproduce()
             return field
         else:
             raise exceptions.FieldDoesNotExist(field)
@@ -416,19 +424,12 @@ class Field(ObjectName):
         return str(self._data)
 
     def __repr__(self):
-        return repr(self._data)
+        return repr('%s=%s' % (self.object_name(), self._data))
 
     def __contains__(self, key):
         return key in self._data
 
     def value(self):
-        #if isinstance(self, Fields.Password):
-        #    return None
-        #elif hasattr(self, 'password'):
-        #    if self.password is True:
-        #        return ""
-        #    else:
-        #        return self._data
         return self._data
 
     class _JsonEncoder(json.JSONEncoder):
@@ -624,7 +625,7 @@ class Fields(object):
                                     self._parent_key_value = updates[self.foreign_key]
                                     self._parent._set({self._parent_key: self._parent_key_value})
                 else:
-                    raise exceptions.ValidationError("'%s' Expecting dictionary" % (str(self._objectname()),))
+                    raise exceptions.ValidationError("'%s' Expecting dictionary" % (str(self.object_name()),))
 
         def __setitem__(self, key, value):
             self._set({key: value})

@@ -83,41 +83,43 @@ class Base(object):
             method: (self.interface) method callable from WSGI server.
         """
         try:
-            # Some default Attributes
-            self.app_root = app_root.rstrip('/')
-
-            # Ensure in application root
-            os.chdir(self.app_root)
-
-            # Prepend app_root to system path for python
-            # imports during development
-            sys.path.insert(0, self.app_root)
-
-            # Load Configuration
-            config_file_path = "%s/settings.cfg" % (self.app_root,)
-            self.config.load(config_file_path)
-            self.app_config = self.config.get('application')
-            self.log_config = self.config.get('logging')
-            log_level = self.log_config.get('level', 'DEBUG')
-            self.app_name = self.app_config.get('name','tachyonic')
-
-            # Load Logger
-            log_config = self.config.get('logging')
-            self.logger.load(app_name=self.app_name,
-                             syslog_host=log_config.get('host', None),
-                             syslog_port=log_config.get_int('port', 514),
-                             level=log_level,
-                             log_file=log_config.get('file', None))
-
-            log.info("STARTING %s PROCESS" % self.app_name)
-
             with timer() as elapsed:
+                # Some default Attributes
+                self.app_root = app_root.rstrip('/')
+
+                # Ensure in application root
+                os.chdir(self.app_root)
+
+                # Prepend app_root to system path for python
+                # imports during development
+                sys.path.insert(0, self.app_root)
+
+                # Load Configuration
+                config_file_path = "%s/settings.cfg" % (self.app_root,)
+                self.config.load(config_file_path)
+                self.app_config = self.config.get('application')
+                self.log_config = self.config.get('logging')
+                log_level = self.log_config.get('level', 'DEBUG')
+                self.app_name = self.app_config.get('name','tachyonic')
+
+
+                # Load Logger
+                log_config = self.config.get('logging')
+                self.logger.load(app_name=self.app_name,
+                                 syslog_host=log_config.get('host', None),
+                                 syslog_port=log_config.get_int('port', 514),
+                                 level=log_level,
+                                 log_file=log_config.get('file', None))
+
+                log.info("STARTING %s PROCESS" % self.app_name)
+
                 # Load Policy if exists
                 policy_file_path = "%s/policy.json" % (self.app_root,)
                 if os.path.isfile(policy_file_path):
                     policy_file = open(policy_file_path, 'r')
                     self.policy = js.loads(policy_file.read())
                     policy_file.close()
+
 
                 # Monitor Python modules and configs for changes.
                 # If change detected kill myself... only while debug is enabled.
@@ -126,6 +128,7 @@ class Base(object):
                     restart.start(interval=1.0)
                     restart.track(config_file_path)
                     restart.track(policy_file_path)
+
 
                 # Load/Import modules
                 self.app_config.get_items('modules')

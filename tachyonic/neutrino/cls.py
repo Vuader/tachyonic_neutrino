@@ -28,11 +28,51 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 class ObjectName(object):
-    """ObjectName Abstract clsss
+    """ObjectName Abstract class.
 
-    Provides private method to return absolute object name.
+    Provides method to return absolute object name.
     """
-    def _objectname(o):
+    def object_name(self):
         """Returns absolute object name.
         """
-        return o.__module__ + "." + o.__class__.__name__
+        return self.__module__ + "." + self.__class__.__name__
+
+class ObjectReproduce(object):
+    """ObjectReproduce Abstract class.
+
+    A convienance method to reproduce new object from object class.
+
+    This is faster and cleaner than using copy/deepcopy and works for
+    many cases.
+
+    New object will be initilized with same args and kwargs as parent.
+    """
+
+    def __new__(_cls, *args, **kwargs):
+        # New Object with same class.
+        obj = super(ObjectReproduce, _cls).__new__(_cls)
+
+        # Args used by initially on parent constructor.
+        obj._args = args
+        obj._kwargs = kwargs
+
+        return obj
+
+    def reproduce(self):
+        """Reproduce object class.
+
+        Returns new object.
+        """
+        # If has __init__ args stored private property
+        if hasattr(self, '_args'):
+            args = self._args
+        else:
+            args = []
+
+        # If has __init__ kwargs stored private property
+        if hasattr(self, '_kwargs'):
+            kwargs = self._kwargs
+        else:
+            kwargs = {}
+
+        return self.__class__(*args, **kwargs)
