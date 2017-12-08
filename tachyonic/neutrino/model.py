@@ -61,6 +61,7 @@ def _declared_fields(cls):
             prop._name = name
 
     current_fields.sort(key=lambda x: x[1].creation_counter)
+
     return OrderedDict(current_fields)
 
 

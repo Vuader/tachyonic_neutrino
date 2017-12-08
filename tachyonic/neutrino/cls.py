@@ -28,5 +28,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 class ObjectName(object):
+    """ObjectName Abstract clsss
+
+    Provides private method to return absolute object name.
+    """
     def _objectname(o):
+        """Returns absolute object name.
+        """
         return o.__module__ + "." + o.__class__.__name__
