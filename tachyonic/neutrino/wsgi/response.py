@@ -239,14 +239,14 @@ def http_permanent_redirect(url, req, resp):
 class Response(object):
     """ WSGI Response
 
-    When a page is requested, Neutrino creates an Response object that
-    used to form the response. Then Neutrino loads the appropriate
-    view, passing the Response as the second argument to the middleware and
+    When a page is requested, Neutrino creates an Response object that is
+    used to form the response. Then Neutrino loads the appropriate view,
+    passing the Response as the second argument to the middleware and
     view function.
 
     The Response object represents the application’s HTTP response to the
     request. It provides properties and methods for setting status, header
-    and body data.
+    and body content.
 
     Args:
         req (Request): Request Object.
